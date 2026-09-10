@@ -15,6 +15,10 @@ import DashboardPage from "./pages/DashboardPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import LeaveCalendarPage from "./pages/LeaveCalendarPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+
 
 export default function App() {
   return (
@@ -22,6 +26,9 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          
           <Route element={<ProtectedRoute />}>
             <Route element={<AppShell />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
