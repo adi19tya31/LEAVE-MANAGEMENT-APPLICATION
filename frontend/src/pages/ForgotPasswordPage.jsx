@@ -29,9 +29,9 @@ export default function ForgotPasswordPage() {
     try {
       const result = await forgotPassword(email);
 
-      console.log("Forgot password result:", result);
+      // console.log("Forgot password result:", result);
 
-      navigate("/reset-password", {
+      navigate("/verify-otp", {
         state: {
           email,
         },

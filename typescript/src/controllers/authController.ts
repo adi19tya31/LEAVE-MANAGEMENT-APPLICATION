@@ -27,24 +27,20 @@ export async function login(
   }
 }
 
-
 // FORGOT PASSWORD
 
 export async function forgotPassword(
   req: Request,
   res: Response,
   next: NextFunction,
-  ): Promise<void> {
+): Promise<void> {
   try {
+    //   console.log("FORGOT PASSWORD ROUTE REACHED");
+    // console.log("Request body:", req.body);
 
-      console.log("FORGOT PASSWORD ROUTE REACHED");
-    console.log("Request body:", req.body);
-
-    
-      const { email } = req.body as 
-      {
-        email?: string;
-      };
+    const { email } = req.body as {
+      email?: string;
+    };
 
     if (!email) {
       res.status(400).json({
@@ -55,12 +51,40 @@ export async function forgotPassword(
 
     const result = await authService.forgotPassword(email);
 
-     res.json(result);
+    res.json(result);
   } catch (err) {
     next(err);
-    }
   }
+}
 
+// VERIFY RESET OTP
+
+export async function verifyResetOtp(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const { email, otp } = req.body as {
+      email?: string;
+      otp?: string;
+    };
+
+    if (!email || !otp) {
+      res.status(400).json({
+        error: "Email and OTP are required.",
+      });
+
+      return;
+    }
+
+    const result = await authService.verifyResetOtp(email, otp);
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
 
 // RESET PASSWORD
 
@@ -70,19 +94,23 @@ export async function resetPassword(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { email, newPassword } = req.body as {
-      email?: string;
+    const { resetToken, newPassword } = req.body as {
+      resetToken?: string;
       newPassword?: string;
     };
 
-    if (!email || !newPassword) {
+    if (!resetToken || !newPassword) {
       res.status(400).json({
-        error: "Email and new password are required.",
+        error: "Reset token and new password are required.",
       });
+
       return;
     }
 
-    await authService.resetPassword(email, newPassword);
+    await authService.resetPassword(
+      resetToken,
+      newPassword,
+    );
 
     res.json({
       message: "Password reset successfully.",

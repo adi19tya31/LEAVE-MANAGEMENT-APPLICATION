@@ -17,7 +17,7 @@ import LeaveCalendarPage from "./pages/LeaveCalendarPage";
 import ChangePasswordPage from "./pages/ChangePasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-
+import VerifyOtpPage from "./pages/VerifyOtpPage";
 
 
 export default function App() {
@@ -27,6 +27,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           
           <Route element={<ProtectedRoute />}>
