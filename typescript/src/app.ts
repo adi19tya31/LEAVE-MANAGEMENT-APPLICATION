@@ -13,6 +13,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  // console.log("REQUEST:", req.method, req.originalUrl);
+  next();
+});
 
 app.get("/api/health", (req: Request, res: Response) => res.json({ ok: true }));
 

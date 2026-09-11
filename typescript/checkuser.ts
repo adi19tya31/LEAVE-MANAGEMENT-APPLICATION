@@ -24,7 +24,7 @@ async function run(): Promise<void> {
   });
 
   const [rows] = await connection.query<EmployeeRow[]>(
-    "SELECT Emp_id, name, email, password_hash, role_id, Dept_id, reporting_to, status FROM employees"
+    "SELECT Emp_id, name, email, password_hash, role_id, Dept_id, reporting_to, status FROM employees",
   );
 
   console.log(`Found ${rows.length} employee(s) in '${process.env.DB_NAME}':`);
@@ -34,3 +34,5 @@ async function run(): Promise<void> {
 }
 
 run().catch((err: Error) => console.error("❌ Failed:", err.message));
+
+//dsjvajksbv

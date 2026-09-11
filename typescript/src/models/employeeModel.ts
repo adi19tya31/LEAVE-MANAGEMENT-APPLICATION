@@ -147,17 +147,51 @@ async function findDirectReports(empId: number): Promise<Employee[]> {
   return rows;
 }
 
-
 async function updatePassword(
   empId: number,
   passwordHash: string,
 ): Promise<Employee | null> {
-  await pool.query(
-    "UPDATE employees SET password_hash = ? WHERE Emp_id = ?",
-    [passwordHash, empId],
-  );
+  await pool.query("UPDATE employees SET password_hash = ? WHERE Emp_id = ?", [
+    passwordHash,
+    empId,
+  ]);
 
   return findById(empId);
+}
+
+async function saveResetToken(
+  empId: number,
+  token: string,
+  expires: Date,
+): Promise<void> {
+  await pool.query(
+    `UPDATE employees
+     SET reset_token = ?, reset_token_expires = ?
+     WHERE Emp_id = ?`,
+    [token, expires, empId],
+  );
+}
+
+async function findByResetToken(token: string): Promise<Employee | null> {
+  const [rows] = await pool.query<(Employee & RowDataPacket)[]>(
+    `SELECT *
+     FROM employees
+     WHERE reset_token = ?
+     AND reset_token_expires > NOW()`,
+    [token],
+  );
+
+  return rows[0] ?? null;
+}
+
+async function clearResetToken(empId: number): Promise<void> {
+  await pool.query(
+    `UPDATE employees
+     SET reset_token = NULL,
+         reset_token_expires = NULL
+     WHERE Emp_id = ?`,
+    [empId],
+  );
 }
 
 export default {
@@ -169,4 +203,8 @@ export default {
   updateStatus,
   updatePassword,
   findDirectReports,
+
+  saveResetToken,
+  findByResetToken,
+  clearResetToken,
 };
