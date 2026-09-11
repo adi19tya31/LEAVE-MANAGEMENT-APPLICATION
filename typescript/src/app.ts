@@ -8,6 +8,7 @@ import departmentRoutes from "./routes/departmentRoutes";
 import publicHolidayRoutes from "./routes/publicHolidayRoutes";
 import compOffRoutes from "./routes/compOffRoutes";
 import errorHandler from "./middleware/errorHandler";
+import notificationRoutes from "./routes/notificationRoutes"
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api", departmentRoutes);
 app.use("/api", leaveRoutes);
 app.use("/api", publicHolidayRoutes);
 app.use("/api", compOffRoutes);
+app.use("/api",notificationRoutes)
 
 
 // 404 for anything unmatched
