@@ -31,4 +31,43 @@ async function create(input: { name: string; maxDaysPerYear: number }): Promise<
   return findById(result.insertId);
 }
 
-export default { findAll, findById, findByName, create };
+async function update(
+  id: number,
+  input: { name?: string; maxDaysPerYear?: number }
+): Promise<LeaveType | null> {
+  // Build the SET clause dynamically so a partial update (e.g. only
+  // maxDaysPerYear) doesn't overwrite the other column with undefined.
+  const fields: string[] = [];
+  const values: (string | number)[] = [];
+ 
+  if (input.name !== undefined) {
+    fields.push("name = ?");
+    values.push(input.name);
+  }
+  if (input.maxDaysPerYear !== undefined) {
+    fields.push("max_days_per_year = ?");
+    values.push(input.maxDaysPerYear);
+  }
+ 
+  if (fields.length === 0) {
+    // Nothing to update — just return the current row.
+    return findById(id);
+  }
+ 
+  values.push(id);
+  await pool.query<ResultSetHeader>(
+    `UPDATE leave_types SET ${fields.join(", ")} WHERE id = ?`,
+    values
+  );
+  return findById(id);
+}
+
+async function remove(id: number): Promise<boolean> {
+  const [result] = await pool.query<ResultSetHeader>(
+    "DELETE FROM leave_types WHERE id = ?",
+    [id]
+  );
+  return result.affectedRows > 0;
+}
+
+export default { findAll, findById, findByName, create , update, remove };

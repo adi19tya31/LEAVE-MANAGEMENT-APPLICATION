@@ -5,6 +5,7 @@ import leaveApplicationModel from "../models/leaveApplicationModel";
 import leaveApprovalLogModel from "../models/leaveApprovalLogModel";
 import publicHolidayModel from "../models/publicHolidayModel";
 import { ApprovalAction, LeaveApplicationWithNames } from "../types";
+import { sendNotification } from "./notificationServices";
 
 export class LeaveServiceError extends Error {
   statusCode: number;
@@ -213,6 +214,16 @@ export async function applyForLeave(
     approverId,
 
   });
+
+  //notify the owner or manager
+  await sendNotification(
+    approverId,
+    'New Leave Request',
+    `Employee ${employeeId} has submitted a leave request from ${startDate} to ${endDate}.`,
+    'leave_request',
+    application?.id
+);
+  
 
   if (!application) {
     throw new LeaveServiceError("Failed to create leave application.", 500);

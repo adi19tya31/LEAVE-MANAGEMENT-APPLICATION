@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import * as leaveService from "../services/leaveService";
 import leaveApplicationModel from "../models/leaveApplicationModel";
-
+import leaveTypeModel from "../models/leaveTypeModel";
 interface SubmitApplicationBody {
   leaveTypeId: number;
 
