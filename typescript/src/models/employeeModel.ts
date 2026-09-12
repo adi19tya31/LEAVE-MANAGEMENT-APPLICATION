@@ -86,6 +86,19 @@ async function getReportingTo(empId: number): Promise<number | null> {
   return employee.reporting_to;
 }
 
+async function findOwnerIds(): Promise<number[]> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT e.Emp_id
+    FROM employees e
+    JOIN roles r ON r.id = e.role_id
+    WHERE r.name = 'owner'
+    `,
+  );
+
+  return rows.map((row) => Number(row.Emp_id));
+}
+
 async function create(input: CreateEmployeeInput): Promise<Employee | null> {
   const {
     name,
@@ -199,6 +212,7 @@ export default {
   findById,
   findByEmail,
   getReportingTo,
+  findOwnerIds,
   create,
   updateStatus,
   updatePassword,

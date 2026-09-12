@@ -18,7 +18,7 @@ import ChangePasswordPage from "./pages/ChangePasswordPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
-
+import NotificationsPage from "./pages/NotificationsPage";
 
 export default function App() {
   return (
@@ -34,10 +34,12 @@ export default function App() {
             <Route element={<AppShell />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
               <Route path="change-password" element={<ChangePasswordPage />} />
               <Route path="apply" element={<ApplyLeavePage />} />
               <Route path="my-applications" element={<MyApplicationsPage />} />
               <Route path="comp-off" element={<CompOffPage />} />
+              
               <Route element={<RoleRoute roles={["manager", "owner"]} />}>
                 <Route path="employees" element={<EmployeesPage />} />
                 <Route path="leave-calendar" element={<LeaveCalendarPage />} />

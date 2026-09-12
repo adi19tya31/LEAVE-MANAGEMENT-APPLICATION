@@ -1,19 +1,18 @@
-import pool from '../config/db';
+import pool from "../config/db";
 
 export interface CreateNotificationInput {
-    recipientId: number;
-    title: string;
-    message: string;
-    type: string;
-    referenceId?: number;
+  recipientId: number;
+  title: string;
+  message: string;
+  type: string;
+  referenceId?: number;
 }
 
 export async function createNotification(
-    data: CreateNotificationInput
+  data: CreateNotificationInput,
 ): Promise<void> {
-
-    await pool.execute(
-        `
+  await pool.execute(
+    `
         INSERT INTO notifications
         (
             recipient_id,
@@ -24,21 +23,19 @@ export async function createNotification(
         )
         VALUES (?, ?, ?, ?, ?)
         `,
-        [
-            data.recipientId,
-            data.title,
-            data.message,
-            data.type,
-            data.referenceId ?? null
-        ]
-    );
+    [
+      data.recipientId,
+      data.title,
+      data.message,
+      data.type,
+      data.referenceId ?? null,
+    ],
+  );
 }
 
-export async function getNotifications(
-    recipientId: number
-) {
-    const [rows] = await pool.execute(
-        `
+export async function getNotifications(recipientId: number) {
+  const [rows] = await pool.execute(
+    `
         SELECT
             notification_id,
             title,
@@ -51,56 +48,75 @@ export async function getNotifications(
         WHERE recipient_id = ?
         ORDER BY created_at DESC
         `,
-        [recipientId]
-    );
+    [recipientId],
+  );
 
-    return rows;
+  return rows;
 }
 
-export async function getUnreadCount(
-    recipientId: number
-): Promise<number> {
-
-    const [rows]: any = await pool.execute(
-        `
+export async function getUnreadCount(recipientId: number): Promise<number> {
+  const [rows]: any = await pool.execute(
+    `
         SELECT COUNT(*) AS count
         FROM notifications
         WHERE recipient_id = ?
           AND is_read = FALSE
         `,
-        [recipientId]
-    );
+    [recipientId],
+  );
 
-    return Number(rows[0].count);
+  return Number(rows[0].count);
 }
 
 export async function markAsRead(
-    notificationId: number,
-    recipientId: number
+  notificationId: number,
+  recipientId: number,
 ): Promise<void> {
-
-    await pool.execute(
-        `
+  await pool.execute(
+    `
         UPDATE notifications
         SET is_read = TRUE
         WHERE notification_id = ?
           AND recipient_id = ?
         `,
-        [notificationId, recipientId]
-    );
+    [notificationId, recipientId],
+  );
 }
 
-export async function markAllAsRead(
-    recipientId: number
+export async function deleteNotification(
+  notificationId: number,
+  recipientId: number,
 ): Promise<void> {
+  await pool.execute(
+    `
+        DELETE FROM notifications
+        WHERE notification_id = ?
+          AND recipient_id = ?
+        `,
+    [notificationId, recipientId],
+  );
+}
 
-    await pool.execute(
-        `
+export async function markAllAsRead(recipientId: number): Promise<void> {
+  await pool.execute(
+    `
         UPDATE notifications
         SET is_read = TRUE
         WHERE recipient_id = ?
           AND is_read = FALSE
         `,
-        [recipientId]
-    );
+    [recipientId],
+  );
+}
+
+export async function deleteAllNotifications(
+  recipientId: number,
+): Promise<void> {
+  await pool.execute(
+    `
+        DELETE FROM notifications
+        WHERE recipient_id = ?
+        `,
+    [recipientId],
+  );
 }
