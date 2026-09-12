@@ -7,7 +7,6 @@ import roleModel from "../models/roleModel";
 import passwordResetOtpModel from "../models/passwordResetOtpModel";
 import { sendPasswordResetOtp } from "./emailService";
 
-
 interface ServiceError extends Error {
   statusCode: number;
 }
@@ -94,27 +93,16 @@ export async function forgotPassword(email: string) {
   const otpHash = await bcrypt.hash(otp, 10);
 
   // OTP expires after 5 minutes
-  const expiresAt = new Date(
-    Date.now() + 5 * 60 * 1000,
-  );
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
   // Delete previous OTPs for this employee
-  await passwordResetOtpModel.deleteByEmployeeId(
-    employee.Emp_id,
-  );
+  await passwordResetOtpModel.deleteByEmployeeId(employee.Emp_id);
 
   // Save new hashed OTP
-  await passwordResetOtpModel.create(
-    employee.Emp_id,
-    otpHash,
-    expiresAt,
-  );
+  await passwordResetOtpModel.create(employee.Emp_id, otpHash, expiresAt);
 
   // Send OTP to employee's registered email
-  await sendPasswordResetOtp(
-    employee.email,
-    otp,
-  );
+  await sendPasswordResetOtp(employee.email, otp);
 
   return {
     message: "OTP sent successfully to your registered email.",
@@ -122,26 +110,35 @@ export async function forgotPassword(email: string) {
   };
 }
 
-
 // ======================================
 // VERIFY PASSWORD RESET OTP
 // ======================================
 
-export async function verifyResetOtp(
-  email: string,
-  otp: string,
-) {
+export async function verifyResetOtp(email: string, otp: string) {
   // Verify employee
   const employee = await employeeModel.findByEmail(email);
 
   if (!employee) {
-    throw serviceError(
-      404,
-      "Employee not found.",
-    );
+    throw serviceError(404, "Employee not found.");
   }
 
-  // Your OTP validation logic here
+  const storedOtp = await passwordResetOtpModel.findLatestByEmployeeId(
+    employee.Emp_id,
+  );
+
+  if (!storedOtp) {
+    throw serviceError(401, "Invalid or expired OTP.");
+  }
+
+  if (new Date(storedOtp.expires_at).getTime() <= Date.now()) {
+    throw serviceError(401, "Invalid or expired OTP.");
+  }
+
+  const isOtpValid = await bcrypt.compare(otp, storedOtp.otp_hash);
+
+  if (!isOtpValid) {
+    throw serviceError(401, "Invalid or expired OTP.");
+  }
 
   // Generate reset token
   const resetToken = jwt.sign(
@@ -169,60 +166,37 @@ export async function resetPassword(
   resetToken: string,
   newPassword: string,
 ): Promise<void> {
-
   if (newPassword.length < 6) {
-    throw serviceError(
-      400,
-      "Password must be at least 6 characters long.",
-    );
+    throw serviceError(400, "Password must be at least 6 characters long.");
   }
 
   let payload: any;
 
   try {
-    payload = jwt.verify(
-      resetToken,
-      process.env.JWT_SECRET as string,
-    );
+    payload = jwt.verify(resetToken, process.env.JWT_SECRET as string);
   } catch {
-    throw serviceError(
-      401,
-      "Invalid or expired password reset token.",
-    );
+    throw serviceError(401, "Invalid or expired password reset token.");
   }
 
   // Ensure this token is only for password reset
-  if (payload.purpose !== "password_reset") {
-    throw serviceError(
-      401,
-      "Invalid password reset token.",
-    );
+  if (payload.purpose !== "password-reset") {
+    throw serviceError(401, "Invalid password reset token.");
   }
 
-  const employee = await employeeModel.findById(
-    payload.id,
-  );
+  const employee = await employeeModel.findById(payload.id);
 
   if (!employee) {
     throw serviceError(404, "Employee not found.");
   }
 
   // Hash new password
-  const passwordHash = await bcrypt.hash(
-    newPassword,
-    10,
-  );
+  const passwordHash = await bcrypt.hash(newPassword, 10);
 
   // Update password
-  await employeeModel.updatePassword(
-    employee.Emp_id,
-    passwordHash,
-  );
+  await employeeModel.updatePassword(employee.Emp_id, passwordHash);
 
   // Delete OTP after successful password reset
-  await passwordResetOtpModel.deleteAfterUse(
-    employee.Emp_id,
-  );
+  await passwordResetOtpModel.deleteAfterUse(employee.Emp_id);
 }
 
 export default {

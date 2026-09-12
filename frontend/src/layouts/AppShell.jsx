@@ -165,7 +165,16 @@ export default function AppShell() {
         setUnreadCount((prev) => Math.max(prev - 1, 0));
       }
 
-      navigate(managerOrOwner ? "/approvals" : "/my-applications");
+      const isCompOffNotification = notification.type.startsWith("COMPOFF_");
+      navigate(
+        managerOrOwner
+          ? isCompOffNotification
+            ? "/comp-off-approvals"
+            : "/approvals"
+          : isCompOffNotification
+            ? "/comp-off"
+            : "/my-applications",
+      );
 
       setShowNotifications(false);
     } catch (err) {

@@ -79,7 +79,16 @@ export default function NotificationsPage() {
         );
       }
 
-      navigate(managerOrOwner ? "/approvals" : "/my-applications");
+      const isCompOffNotification = notification.type.startsWith("COMPOFF_");
+      navigate(
+        managerOrOwner
+          ? isCompOffNotification
+            ? "/comp-off-approvals"
+            : "/approvals"
+          : isCompOffNotification
+            ? "/comp-off"
+            : "/my-applications",
+      );
     } catch (err) {
       setError(err.message);
     }
@@ -117,6 +126,9 @@ export default function NotificationsPage() {
         return <Calendar className="h-5 w-5" />;
 
       case "comp_off":
+      case "COMPOFF_APPLIED":
+      case "COMPOFF_APPROVED":
+      case "COMPOFF_REJECTED":
         return <Clock className="h-5 w-5" />;
 
       case "employee":

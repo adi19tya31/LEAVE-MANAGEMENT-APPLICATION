@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import compOffModel from "../models/compOffModel";
 import employeeModel from "../models/employeeModel";
 import pool from "../config/db";
+import { sendNotification } from "../services/notificationServices";
 
 function validDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
@@ -35,6 +36,24 @@ export async function applyCompOff(req: Request, res: Response, next: NextFuncti
       reason: reason.trim(),
       approverId: employee.reporting_to,
     });
+
+    const recipientIds = new Set([
+      employee.reporting_to,
+      ...(await employeeModel.findOwnerIds()),
+    ]);
+
+    await Promise.all(
+      [...recipientIds].map((recipientId) =>
+        sendNotification(
+          recipientId,
+          "New Comp-Off Request",
+          `${employee.name} has submitted a comp-off request for ${workDate}.`,
+          "COMPOFF_APPLIED",
+          created?.id,
+        ),
+      ),
+    );
+
     res.status(201).json(created);
   } catch (err) {
     next(err);
@@ -102,6 +121,25 @@ export async function decideCompOff(req: Request, res: Response, next: NextFunct
         connection,
       );
       await connection.commit();
+
+      const approver = await employeeModel.findById(req.user!.id);
+      const notificationTitle =
+        action === "approved"
+          ? "Comp-Off Request Approved"
+          : "Comp-Off Request Rejected";
+      const notificationMessage =
+        action === "approved"
+          ? `Your comp-off request has been approved by ${approver?.name || "your manager"}.`
+          : `Your comp-off request has been rejected by ${approver?.name || "your manager"}.`;
+
+      await sendNotification(
+        existing.employee_id,
+        notificationTitle,
+        notificationMessage,
+        action === "approved" ? "COMPOFF_APPROVED" : "COMPOFF_REJECTED",
+        existing.id,
+      );
+
       res.json(await compOffModel.findById(existing.id));
     } catch (err) {
       await connection.rollback();
