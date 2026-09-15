@@ -1,28 +1,37 @@
 import pool from "../config/db";
+
 import {
   Pool,
   RowDataPacket,
   ResultSetHeader,
   PoolConnection,
 } from "mysql2/promise";
-import {
-  LeaveApplication,
-  LeaveApplicationWithNames,
-  LeaveApplicationStatus,
-} from "../types";
+
+import { LeaveApplicationWithNames, LeaveApplicationStatus } from "../types";
 
 interface CreateApplicationInput {
   employeeId: number;
+
   leaveTypeId: number;
+
   startDate: string;
+
   endDate: string;
+
   startDayType: "FULL_DAY" | "FIRST_HALF" | "SECOND_HALF";
 
   endDayType: "FULL_DAY" | "FIRST_HALF" | "SECOND_HALF";
+
   totalDays: number;
+
   reason: string;
+
   approverId: number;
 }
+
+// ======================================
+// CREATE LEAVE APPLICATION
+// ======================================
 
 async function create(
   input: CreateApplicationInput,
@@ -40,20 +49,26 @@ async function create(
   } = input;
 
   const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO leave_applications (
-  employee_id,
-  leave_type_id,
-  start_date,
-  end_date,
-  start_day_type,
-  end_day_type,
-  total_days,
-  duration_type,
-  reason,
-  approver_id,
-  status
-)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+    `
+      INSERT INTO leave_applications
+      (
+        employee_id,
+        leave_type_id,
+        start_date,
+        end_date,
+        start_day_type,
+        end_day_type,
+        total_days,
+        duration_type,
+        reason,
+        approver_id,
+        status
+      )
+
+      VALUES
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+      `,
+
     [
       employeeId,
       leaveTypeId,
@@ -71,19 +86,47 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
   return findById(result.insertId);
 }
 
-async function findById(id: number): Promise<LeaveApplicationWithNames | null> {
-  const [rows] = await pool.query<
+// ======================================
+// FIND BY ID
+// ======================================
+
+async function findById(
+  id: number,
+
+  connection: Pool | PoolConnection = pool,
+): Promise<LeaveApplicationWithNames | null> {
+  const [rows] = await connection.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
   >(
-    `SELECT la.*, lt.name AS leave_type_name, e.name AS applicant_name
-     FROM leave_applications la
-     JOIN leave_types lt ON lt.id = la.leave_type_id
-     JOIN employees e ON e.Emp_id = la.employee_id
-     WHERE la.id = ?`,
+    `
+      SELECT
+
+        la.*,
+
+        lt.name AS leave_type_name,
+
+        e.name AS applicant_name
+
+      FROM leave_applications la
+
+      JOIN leave_types lt
+        ON lt.id = la.leave_type_id
+
+      JOIN employees e
+        ON e.Emp_id = la.employee_id
+
+      WHERE la.id = ?
+      `,
+
     [id],
   );
+
   return rows[0] ?? null;
 }
+
+// ======================================
+// EMPLOYEE LEAVE HISTORY
+// ======================================
 
 async function findByEmployee(
   employeeId: number,
@@ -91,47 +134,102 @@ async function findByEmployee(
   const [rows] = await pool.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
   >(
-    `SELECT la.*, lt.name AS leave_type_name
-     FROM leave_applications la
-     JOIN leave_types lt ON lt.id = la.leave_type_id
-     WHERE la.employee_id = ?
-     ORDER BY la.applied_on DESC`,
+    `
+      SELECT
+
+        la.*,
+
+        lt.name AS leave_type_name
+
+      FROM leave_applications la
+
+      JOIN leave_types lt
+        ON lt.id = la.leave_type_id
+
+      WHERE la.employee_id = ?
+
+      ORDER BY la.applied_on DESC
+      `,
+
     [employeeId],
   );
+
   return rows;
 }
 
-// An approver's queue — this is the query that makes the whole hierarchy work:
-// it needs no per-team or per-level branching, just a filter on approver_id.
+// ======================================
+// TEAM HISTORY
+// ======================================
+
 async function findTeamHistory(
   approverId: number,
 ): Promise<LeaveApplicationWithNames[]> {
   const [rows] = await pool.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
   >(
-    `SELECT la.*, lt.name AS leave_type_name, e.name AS applicant_name
-     FROM leave_applications la
-     JOIN leave_types lt ON lt.id = la.leave_type_id
-     JOIN employees e ON e.Emp_id = la.employee_id
-     WHERE e.reporting_to = ?
-     ORDER BY la.applied_on DESC`,
+    `
+      SELECT
+
+        la.*,
+
+        lt.name AS leave_type_name,
+
+        e.name AS applicant_name
+
+      FROM leave_applications la
+
+      JOIN leave_types lt
+        ON lt.id = la.leave_type_id
+
+      JOIN employees e
+        ON e.Emp_id = la.employee_id
+
+      WHERE e.reporting_to = ?
+
+      ORDER BY la.applied_on DESC
+      `,
+
     [approverId],
   );
+
   return rows;
 }
+
+// ======================================
+// ALL LEAVE HISTORY
+// ======================================
 
 async function findAllHistory(): Promise<LeaveApplicationWithNames[]> {
   const [rows] = await pool.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
   >(
-    `SELECT la.*, lt.name AS leave_type_name, e.name AS applicant_name
-     FROM leave_applications la
-     JOIN leave_types lt ON lt.id = la.leave_type_id
-     JOIN employees e ON e.Emp_id = la.employee_id
-     ORDER BY la.applied_on DESC`,
+    `
+      SELECT
+
+        la.*,
+
+        lt.name AS leave_type_name,
+
+        e.name AS applicant_name
+
+      FROM leave_applications la
+
+      JOIN leave_types lt
+        ON lt.id = la.leave_type_id
+
+      JOIN employees e
+        ON e.Emp_id = la.employee_id
+
+      ORDER BY la.applied_on DESC
+      `,
   );
+
   return rows;
 }
+
+// ======================================
+// PENDING APPROVALS
+// ======================================
 
 async function findPendingForApprover(
   approverId: number,
@@ -139,29 +237,71 @@ async function findPendingForApprover(
   const [rows] = await pool.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
   >(
-    `SELECT la.*, lt.name AS leave_type_name, e.name AS applicant_name
-     FROM leave_applications la
-     JOIN leave_types lt ON lt.id = la.leave_type_id
-     JOIN employees e ON e.Emp_id = la.employee_id
-     WHERE la.approver_id = ? AND la.status = 'pending'
-     ORDER BY la.applied_on ASC`,
+    `
+      SELECT
+
+        la.*,
+
+        lt.name AS leave_type_name,
+
+        e.name AS applicant_name
+
+      FROM leave_applications la
+
+      JOIN leave_types lt
+        ON lt.id = la.leave_type_id
+
+      JOIN employees e
+        ON e.Emp_id = la.employee_id
+
+      WHERE
+        la.approver_id = ?
+
+      AND
+        la.status = 'pending'
+
+      ORDER BY la.applied_on ASC
+      `,
+
     [approverId],
   );
+
   return rows;
 }
 
+// ======================================
+// UPDATE STATUS
+// ======================================
+
 async function updateStatus(
   id: number,
+
   status: LeaveApplicationStatus,
+
   connection: Pool | PoolConnection = pool,
 ): Promise<LeaveApplicationWithNames | null> {
   await connection.query(
-    "UPDATE leave_applications SET status = ?, decided_on = NOW() WHERE id = ?",
+    `
+    UPDATE leave_applications
+
+    SET
+
+      status = ?,
+
+      decided_on = NOW()
+
+    WHERE id = ?
+    `,
+
     [status, id],
   );
-  return findById(id);
+
+  return findById(id, connection);
 }
 
+// ======================================
+// LEAVE CALENDAR
+// ======================================
 
 async function findForCalendar(
   approverId?: number,
@@ -172,6 +312,7 @@ async function findForCalendar(
 
   if (approverId) {
     managerCondition = "WHERE la.approver_id = ?";
+
     params.push(approverId);
   }
 
@@ -179,41 +320,56 @@ async function findForCalendar(
     (LeaveApplicationWithNames & RowDataPacket)[]
   >(
     `
-    SELECT
-      la.*,
-      lt.name AS leave_type_name,
-      e.name AS applicant_name,
-      d.name AS department_name
+      SELECT
 
-    FROM leave_applications la
+        la.*,
 
-    JOIN leave_types lt
-      ON lt.id = la.leave_type_id
+        lt.name AS leave_type_name,
 
-    JOIN employees e
-      ON e.Emp_id = la.employee_id
+        e.name AS applicant_name,
 
-    LEFT JOIN departments d
-      ON d.id = e.Dept_id
+        d.name AS department_name
 
-    ${managerCondition}
+      FROM leave_applications la
 
-    ORDER BY la.start_date ASC
-    `,
+      JOIN leave_types lt
+        ON lt.id = la.leave_type_id
+
+      JOIN employees e
+        ON e.Emp_id = la.employee_id
+
+      LEFT JOIN departments d
+        ON d.id = e.Dept_id
+
+      ${managerCondition}
+
+      ORDER BY la.start_date ASC
+      `,
+
     params,
   );
 
   return rows;
 }
 
+// ======================================
+// EXPORT
+// ======================================
+
 export default {
   create,
+
   findById,
+
   findByEmployee,
+
   findTeamHistory,
+
   findAllHistory,
+
   findPendingForApprover,
-  //findApprovedForCalendar,
+
   findForCalendar,
+
   updateStatus,
 };
