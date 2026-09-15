@@ -13,8 +13,6 @@ import publicHolidayModel from "../models/publicHolidayModel";
 import { ApprovalAction, LeaveApplicationWithNames } from "../types";
 import { sendNotification } from "./notificationServices";
 
-import { sendNotification } from "./notificationServices";
-
 export class LeaveServiceError extends Error {
   statusCode: number;
 
