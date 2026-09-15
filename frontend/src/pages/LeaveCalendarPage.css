@@ -242,7 +242,7 @@
 
   color: rgb(0, 0, 0);
 
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 700;
 }
 
@@ -251,7 +251,7 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 
-  color: #000000;
+  color: inherit;
 
   font-size: 13px;
   font-weight: 600;
