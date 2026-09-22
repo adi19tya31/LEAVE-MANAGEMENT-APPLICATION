@@ -19,6 +19,8 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import LeaveTypeManagement from "./pages/leaveType";
+
 
 
 export default function App() {
@@ -26,7 +28,8 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          {/* <Route path="/login" element={<LoginPage />} /> */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -51,6 +54,7 @@ export default function App() {
                 />
                 <Route path="register" element={<RegisterEmployeePage />} />
                 <Route path="departments" element={<DepartmentsPage />} />
+                <Route path="leave-types" element={<LeaveTypeManagement />} />
                 <Route
                   path="public-holidays"
                   element={<PublicHolidaysPage />}

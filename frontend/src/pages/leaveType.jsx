@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-const API_BASE_URL = "/api/leave-types";
+import { useAuth } from "../context/AuthContext";
+import { API_BASE_URL } from "../api/client";
 
-function authHeaders() {
-  const token = localStorage.getItem("token"); // adjust to however you store it
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+const LEAVE_TYPES_URL = `${API_BASE_URL}/api/leave-types`;
 
-async function apiRequest(url, options = {}) {
+async function apiRequest(url, token, options = {}) {
   const res = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
   });
@@ -20,7 +18,8 @@ async function apiRequest(url, options = {}) {
   const body = text ? JSON.parse(text) : null;
 
   if (!res.ok) {
-    const message = body?.message || `Request failed (${res.status})`;
+    const message =
+      body?.error || body?.message || `Request failed (${res.status})`;
     const err = new Error(message);
     err.status = res.status;
     throw err;
@@ -31,6 +30,7 @@ async function apiRequest(url, options = {}) {
 const emptyForm = { name: "", maxDaysPerYear: "" };
 
 export default function LeaveTypeManagement() {
+  const { token } = useAuth();
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -51,14 +51,14 @@ export default function LeaveTypeManagement() {
     setLoading(true);
     setError("");
     try {
-      const data = await apiRequest(API_BASE_URL);
+      const data = await apiRequest(LEAVE_TYPES_URL, token);
       setLeaveTypes(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message || "Failed to load leave types.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     fetchLeaveTypes();
@@ -80,7 +80,8 @@ export default function LeaveTypeManagement() {
     setSearchNotice("");
     try {
       const result = await apiRequest(
-        `${API_BASE_URL}/search?name=${encodeURIComponent(term)}`
+        `${LEAVE_TYPES_URL}/name?name=${encodeURIComponent(term)}`,
+        token,
       );
       setLeaveTypes(result ? [result] : []);
       setSearchActive(true);
@@ -157,15 +158,19 @@ export default function LeaveTypeManagement() {
     setSaving(true);
     try {
       if (editingId) {
-        const updated = await apiRequest(`${API_BASE_URL}/${editingId}`, {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
+        const updated = await apiRequest(
+          `${LEAVE_TYPES_URL}/${editingId}`,
+          token,
+          {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          },
+        );
         setLeaveTypes((prev) =>
-          prev.map((lt) => (lt.id === editingId ? updated : lt))
+          prev.map((lt) => (lt.id === editingId ? updated : lt)),
         );
       } else {
-        const created = await apiRequest(API_BASE_URL, {
+        const created = await apiRequest(LEAVE_TYPES_URL, token, {
           method: "POST",
           body: JSON.stringify(payload),
         });
@@ -186,7 +191,7 @@ export default function LeaveTypeManagement() {
     }
     setError("");
     try {
-      await apiRequest(`${API_BASE_URL}/${id}`, { method: "DELETE" });
+      await apiRequest(`${LEAVE_TYPES_URL}/${id}`, token, { method: "DELETE" });
       setLeaveTypes((prev) => prev.filter((lt) => lt.id !== id));
     } catch (err) {
       // Your backend returns 409 if the leave type is still referenced by

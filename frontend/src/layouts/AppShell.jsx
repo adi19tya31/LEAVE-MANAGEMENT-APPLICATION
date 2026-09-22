@@ -278,6 +278,12 @@ export default function AppShell() {
           },
 
           {
+            to: "/leave-types",
+            label: "Leave Types",
+            icon: ClipboardList,
+          },
+
+          {
             to: "/public-holidays",
             label: "Public Holidays",
             icon: CalendarDays,
