@@ -80,6 +80,47 @@ async function findByEmail(email: string): Promise<Employee | null> {
   return rows[0] ?? null;
 }
 
+
+// Find an employee by email for authentication purposes.
+
+async function findAuthUserByEmail(
+  email: string
+): Promise<{
+  Emp_id: number;
+  name: string;
+  email: string;
+  role_id: number;
+  role_name: string;
+  status: string;
+} | null> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT
+      e.Emp_id,
+      e.name,
+      e.email,
+      e.role_id,
+      r.name AS role_name,
+      e.status
+    FROM employees e
+    INNER JOIN roles r
+      ON r.id = e.role_id
+    WHERE e.email = ?
+    LIMIT 1
+    `,
+    [email],
+  );
+
+  return (rows[0] as {
+    Emp_id: number;
+    name: string;
+    email: string;
+    role_id: number;
+    role_name: string;
+    status: string;
+  }) ?? null;
+}
+
 async function getReportingTo(empId: number): Promise<number | null> {
   const employee = await findById(empId);
   if (!employee) throw new Error("Employee not found");
@@ -211,6 +252,7 @@ export default {
   findAll,
   findById,
   findByEmail,
+  findAuthUserByEmail,
   getReportingTo,
   findOwnerIds,
   create,
