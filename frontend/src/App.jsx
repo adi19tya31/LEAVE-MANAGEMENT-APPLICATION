@@ -22,6 +22,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import LeaveTypeManagement from "./pages/leaveType";
 
 
+
 export default function App() {
   return (
     <BrowserRouter>
