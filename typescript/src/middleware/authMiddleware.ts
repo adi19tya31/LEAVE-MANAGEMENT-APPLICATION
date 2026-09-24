@@ -1,18 +1,25 @@
 import { Request, Response, NextFunction } from "express";
-import { createRemoteJWKSet, jwtVerify, JWTPayload } from "jose";
+import {
+  createRemoteJWKSet,
+  jwtVerify,
+  JWTPayload,
+} from "jose";
 
 import employeeModel from "../models/employeeModel";
 import { AuthPayload } from "../types";
 
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL!;
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!;
-const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!;
+const KEYCLOAK_CLIENT_ID =
+  process.env.KEYCLOAK_CLIENT_ID!;
 
-const KEYCLOAK_ISSUER = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`;
-// console.log("Keycloak Issuer URL:", KEYCLOAK_ISSUER);
+const KEYCLOAK_ISSUER =
+  `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`;
 
 const KEYCLOAK_JWKS = createRemoteJWKSet(
-  new URL(`${KEYCLOAK_ISSUER}/protocol/openid-connect/certs`),
+  new URL(
+    `${KEYCLOAK_ISSUER}/protocol/openid-connect/certs`
+  )
 );
 
 interface KeycloakToken extends JWTPayload {
@@ -20,6 +27,16 @@ interface KeycloakToken extends JWTPayload {
   preferred_username?: string;
   name?: string;
   azp?: string;
+
+  realm_access?: {
+    roles?: string[];
+  };
+
+  resource_access?: {
+    [clientId: string]: {
+      roles?: string[];
+    };
+  };
 }
 
 export async function requireAuth(
@@ -27,121 +44,240 @@ export async function requireAuth(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const header = req.headers.authorization;
 
-  if (!header || !header.startsWith("Bearer ")) {
+  const header =
+    req.headers.authorization;
+
+  // ------------------------------------
+  // Check Authorization header
+  // ------------------------------------
+
+  if (
+    !header ||
+    !header.startsWith("Bearer ")
+  ) {
     res.status(401).json({
-      error: "Missing or malformed Authorization header.",
+      error:
+        "Missing or malformed Authorization header.",
     });
+
     return;
   }
 
-  const token = header.substring(7);
+  const token =
+    header.substring(7);
 
   try {
-    console.log("========== KEYCLOAK AUTH ==========");
-    console.log("Token received:", token.substring(0, 30) + "...");
 
-    const { payload } = await jwtVerify<KeycloakToken>(token, KEYCLOAK_JWKS, {
-      issuer: KEYCLOAK_ISSUER,
-      algorithms: ["RS256"],
-    });
+    // ------------------------------------
+    // Verify Keycloak JWT
+    // ------------------------------------
 
-    console.log("Keycloak token verified");
-    console.log("Issuer:", payload.iss);
-    console.log("Audience:", payload.aud);
-    console.log("AZP:", payload.azp);
-    console.log("Email:", payload.email);
-
-    const audience = Array.isArray(payload.aud)
-      ? payload.aud
-      : payload.aud
-        ? [payload.aud]
-        : [];
-
-    if (
-      payload.azp !== KEYCLOAK_CLIENT_ID &&
-      !audience.includes(KEYCLOAK_CLIENT_ID)
-    ) {
-      console.log(
-        "AZP mismatch:",
-        payload.azp,
-        "expected:",
-        KEYCLOAK_CLIENT_ID,
+    const { payload } =
+      await jwtVerify<KeycloakToken>(
+        token,
+        KEYCLOAK_JWKS,
+        {
+          issuer: KEYCLOAK_ISSUER,
+          algorithms: ["RS256"],
+        }
       );
 
+    // ------------------------------------
+    // Verify application/client
+    // ------------------------------------
+
+    if (
+      payload.azp !== KEYCLOAK_CLIENT_ID
+    ) {
       res.status(401).json({
-        error: "Token was not issued for this application.",
+        error:
+          "Token was not issued for this application.",
       });
 
       return;
     }
 
-    const email = payload.email || payload.preferred_username;
+    // ------------------------------------
+    // Get email from Keycloak
+    // ------------------------------------
+
+    const email =
+      payload.email ||
+      payload.preferred_username;
 
     if (!email) {
       res.status(401).json({
-        error: "Keycloak token does not contain an email.",
+        error:
+          "Keycloak token does not contain an email.",
       });
 
       return;
     }
 
-    console.log("Searching employee:", email);
+    // console.log(
+    //   "Authenticated Keycloak email:",
+    //   email
+    // );
 
-    const employee = await employeeModel.findAuthUserByEmail(email);
+    // ------------------------------------
+    // IMPORTANT:
+    // Keycloak roles are NOT used for
+    // application authorization.
+    //
+    // MySQL is the source of truth for
+    // employee / manager / owner.
+    // ------------------------------------
+
+    // ------------------------------------
+    // Find employee in MySQL
+    // ------------------------------------
+
+    const employee =
+      await employeeModel.findAuthUserByEmail(
+        email
+      );
 
     if (!employee) {
-      console.log("Employee not found in database:", email);
-
       res.status(403).json({
-        error: "Authenticated Keycloak user is not registered as an employee.",
+        error:
+          "Authenticated Keycloak user is not registered as an employee.",
       });
 
       return;
     }
 
-    if (employee.status !== "active") {
+    // ------------------------------------
+    // Check employee status
+    // ------------------------------------
+
+    if (
+      employee.status !== "active"
+    ) {
       res.status(403).json({
-        error: "Employee account is not active.",
+        error:
+          "Employee account is not active.",
       });
 
       return;
     }
+
+    // ------------------------------------
+    // Get application role from MySQL
+    // ------------------------------------
+
+    const roleId =
+      Number(employee.role_id);
+
+    const applicationRole =
+      employee.role_name;
+
+    // ------------------------------------
+    // Validate database role
+    // ------------------------------------
+
+    const validRoles = [
+      "employee",
+      "manager",
+      "owner",
+    ];
+
+    if (
+      !validRoles.includes(
+        applicationRole
+      )
+    ) {
+      res.status(403).json({
+        error:
+          "Invalid application role configured for this employee.",
+      });
+
+      return;
+    }
+
+    if (
+      ![1, 2, 3].includes(roleId)
+    ) {
+      res.status(403).json({
+        error:
+          "Invalid application role ID configured for this employee.",
+      });
+
+      return;
+    }
+
+    // ------------------------------------
+    // Create existing application
+    // authentication payload
+    // ------------------------------------
 
     const authPayload: AuthPayload = {
       id: Number(employee.Emp_id),
-      roleId: Number(employee.role_id),
-      role: employee.role_name,
+
+      roleId: roleId,
+
+      role: applicationRole,
+
       name: employee.name,
     };
 
-    req.user = authPayload;
+    // ------------------------------------
+    // Attach user to request
+    // ------------------------------------
 
-    console.log("Application user:", authPayload);
-    console.log("==================================");
+    req.user =
+      authPayload;
+
+    // console.log(
+    //   "Authenticated application user:",
+    //   authPayload
+    // );
+
+    // ------------------------------------
+    // Continue request
+    // ------------------------------------
 
     next();
+
   } catch (error) {
-    console.error("========== KEYCLOAK AUTH ERROR ==========");
 
-    console.error(error);
-
-    console.error("=========================================");
+    console.error(
+      "Keycloak authentication failed:",
+      error
+    );
 
     res.status(401).json({
-      error: "Invalid or expired Keycloak token.",
+      error:
+        "Invalid or expired Keycloak token.",
     });
 
     return;
   }
 }
 
-export function requireRole(...allowedRoles: string[]) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const role = req.user?.role;
 
-    if (!role || !allowedRoles.includes(role)) {
+// ========================================
+// ROLE AUTHORIZATION
+// ========================================
+
+export function requireRole(
+  ...allowedRoles: string[]
+) {
+
+  return (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): void => {
+
+    const role =
+      req.user?.role;
+
+    if (
+      !role ||
+      !allowedRoles.includes(role)
+    ) {
+
       res.status(403).json({
         error:
           `This action requires one of these roles: ` +

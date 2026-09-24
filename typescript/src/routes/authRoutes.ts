@@ -6,8 +6,19 @@ import {
   verifyResetOtp,
   resetPassword,
 } from "../controllers/authController";
+import { requireAuth } from "../middleware/authMiddleware";
 
 const router = Router();
+
+router.get(
+  "/me",
+  requireAuth,
+  (req, res) => {
+    res.json({
+      user: req.user,
+    });
+  }
+);
 
 // PUBLIC ROUTES
 router.post("/login", login);
