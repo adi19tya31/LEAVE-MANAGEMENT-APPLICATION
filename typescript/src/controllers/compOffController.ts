@@ -2,13 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import compOffModel from "../models/compOffModel";
 import employeeModel from "../models/employeeModel";
 import pool from "../config/db";
-<<<<<<< Updated upstream
-import { sendNotification } from "../services/notificationServices";
-
-=======
 import  * as compoffServices from "../services/compoffServices"
+import { sendNotification } from "../services/notificationServices";
 import { addCompOffBalance } from "../models/compoffBalancesModel";
->>>>>>> Stashed changes
 function validDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
 }
