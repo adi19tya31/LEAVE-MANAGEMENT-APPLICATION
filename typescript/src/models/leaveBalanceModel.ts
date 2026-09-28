@@ -67,4 +67,26 @@ async function incrementUsedDays(
   );
 }
 
-export default { getBalance, listForEmployee, create, incrementUsedDays };
+export async function refundLeaveBalance(
+  employeeId: number,
+  leaveTypeId: number,
+  year: number,
+  days: number,
+  connection: Pool | PoolConnection = pool,
+): Promise<boolean> {
+  const [result]: any = await connection.execute(
+    `
+    UPDATE leave_balances
+    SET used_days = used_days - ?
+    WHERE employee_id = ?
+      AND leave_type_id = ?
+      AND year = ?
+      AND used_days >= ?
+    `,
+    [days, employeeId, leaveTypeId, year, days],
+  );
+
+  return result.affectedRows > 0;
+}
+
+export default { getBalance, listForEmployee, create, incrementUsedDays , refundLeaveBalance };

@@ -283,25 +283,75 @@ async function updateStatus(
   await connection.query(
     `
     UPDATE leave_applications
-
-    SET
-
-      status = ?,
-
-      decided_on = NOW()
-
+    SET status = ?, decided_on = NOW()
     WHERE id = ?
     `,
-
     [status, id],
   );
 
-  return findById(id, connection);
+  const [rows] = await connection.query<
+    (LeaveApplicationWithNames & RowDataPacket)[]
+  >(
+    `
+    SELECT
+      la.*,
+      lt.name AS leave_type_name,
+      e.name AS applicant_name
+    FROM leave_applications la
+    JOIN leave_types lt
+      ON lt.id = la.leave_type_id
+    JOIN employees e
+      ON e.Emp_id = la.employee_id
+    WHERE la.id = ?
+    `,
+    [id],
+  );
+
+  return rows[0] ?? null;
 }
 
-// ======================================
-// LEAVE CALENDAR
-// ======================================
+//cancled the leave 
+async function cancel(
+  id: number,
+  employeeId: number,
+  connection: Pool | PoolConnection = pool,
+): Promise<LeaveApplicationWithNames | null> {
+  const [result] = await connection.query<ResultSetHeader>(
+    `
+    UPDATE leave_applications
+    SET status = 'cancelled',
+        decided_on = NOW()
+    WHERE id = ?
+      AND employee_id = ?
+      AND status IN ('pending', 'approved')
+    `,
+    [id, employeeId],
+  );
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  const [rows] = await connection.query<
+    (LeaveApplicationWithNames & RowDataPacket)[]
+  >(
+    `
+    SELECT
+      la.*,
+      lt.name AS leave_type_name,
+      e.name AS applicant_name
+    FROM leave_applications la
+    JOIN leave_types lt
+      ON lt.id = la.leave_type_id
+    JOIN employees e
+      ON e.Emp_id = la.employee_id
+    WHERE la.id = ?
+    `,
+    [id],
+  );
+
+  return rows[0] ?? null;
+}
 
 async function findForCalendar(
   approverId?: number,
@@ -352,9 +402,22 @@ async function findForCalendar(
   return rows;
 }
 
-// ======================================
-// EXPORT
-// ======================================
+async function findLeaveTypeById(
+  leaveTypeId: number,
+): Promise<{ id: number; name: string } | null> {
+  const [rows] = await pool.query<
+    (RowDataPacket & { id: number; name: string })[]
+  >(
+    `
+    SELECT id, name
+    FROM leave_types
+    WHERE id = ?
+    `,
+    [leaveTypeId],
+  );
+
+  return rows[0] ?? null;
+}
 
 export default {
   create,
@@ -372,4 +435,6 @@ export default {
   findForCalendar,
 
   updateStatus,
+  cancel,
+  findLeaveTypeById
 };

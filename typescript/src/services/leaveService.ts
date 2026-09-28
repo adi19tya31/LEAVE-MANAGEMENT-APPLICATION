@@ -9,7 +9,11 @@ import leaveApplicationModel from "../models/leaveApplicationModel";
 import leaveApprovalLogModel from "../models/leaveApprovalLogModel";
 
 import publicHolidayModel from "../models/publicHolidayModel";
-
+import {
+  getCompOffBalance,
+  useCompOffBalance,
+  refundCompOffBalance,
+} from "../models/compoffBalancesModel";
 import { ApprovalAction, LeaveApplicationWithNames } from "../types";
 import { sendNotification } from "./notificationServices";
 
@@ -115,14 +119,16 @@ function calculateLeaveDays(
       if (dateString === startDate) {
         total += startDayType === "FULL_DAY" ? 1 : 0.5;
       } else if (dateString === endDate) {
+
         /*
-        END DATE
-      */
+          END DATE
+        */
         total += endDayType === "FULL_DAY" ? 1 : 0.5;
       } else {
+
         /*
-        MIDDLE DATE
-      */
+          MIDDLE DATE
+        */
         total += 1;
       }
     }
@@ -186,75 +192,100 @@ export async function applyForLeave(
     );
   }
 
-  /*
-    LEAVE BALANCE
-  */
+  // 1. Check balance
+  const year = new Date(`${startDate}T00:00:00Z`).getUTCFullYear();
 
-  const year = new Date(startDate).getFullYear();
-
-  const balance = await leaveBalanceModel.getBalance(
-    employeeId,
+  const leaveType = await leaveApplicationModel.findLeaveTypeById(
     leaveTypeId,
-    year,
   );
 
-  if (!balance) {
+  if (!leaveType) {
     throw new LeaveServiceError(
-      "No leave balance record for this leave type / year.",
+      "Invalid leave type.",
+      404,
     );
   }
 
-  const remaining = balance.allocated_days - balance.used_days;
+  let remaining: number;
 
-  if (totalDays > remaining) {
-    throw new LeaveServiceError(
-      `Only ${remaining} day(s) remaining for this leave type — cannot apply for ${totalDays}.`,
-      409,
+  if (leaveType.name.trim().toLowerCase() === "comp-off") {
+    // Comp-Off uses the dedicated Comp-Off balance.
+    const compOffBalance = await getCompOffBalance(
+      employeeId,
+      year,
     );
+
+    remaining = compOffBalance.available_days;
+
+    if (totalDays > remaining) {
+      throw new LeaveServiceError(
+        `Only ${remaining} Comp-Off day(s) available — cannot apply for ${totalDays} day(s).`,
+        409,
+      );
+    }
+  } else {
+    // Normal leave uses the existing leave balance.
+    const balance = await leaveBalanceModel.getBalance(
+      employeeId,
+      leaveTypeId,
+      year,
+    );
+
+    if (!balance) {
+      throw new LeaveServiceError(
+        "No leave balance record for this leave type / year.",
+      );
+    }
+
+    remaining = balance.allocated_days - balance.used_days;
+
+    if (totalDays > remaining) {
+      throw new LeaveServiceError(
+        `Only ${remaining} day(s) remaining for this leave type — cannot apply for ${totalDays}.`,
+        409,
+      );
+    }
   }
-
-  /*
-    FIND APPROVER
-  */
-
+  // 2. Resolve approver — this is the whole hierarchy rule, one lookup
   const approverId = await employeeModel.getReportingTo(employeeId);
 
   if (!approverId) {
     throw new LeaveServiceError("No approver found for this employee.", 422);
   }
 
-  /*
-    CREATE LEAVE APPLICATION
-  */
+  // 3. Create the application (status defaults to 'pending')
+  const application =
+    await leaveApplicationModel.create({
 
-  const application = await leaveApplicationModel.create({
-    employeeId,
+      employeeId,
 
-    leaveTypeId,
+      leaveTypeId,
 
-    startDate,
+      startDate,
 
-    endDate,
+      endDate,
 
-    startDayType,
+      startDayType,
 
-    endDayType,
+      endDayType,
 
-    totalDays,
+      totalDays,
 
-    reason,
+      reason,
 
-    approverId,
-  });
+      approverId,
+
+    });
 
   //notify the owner or manager
   await sendNotification(
     approverId,
     "New Leave Request",
     `Employee ${employeeId} has submitted a leave request from ${startDate} to ${endDate}.`,
-    "leave_request",
-    application?.id,
+    'leave_request',
+    application?.id
   );
+
 
   if (!application) {
     throw new LeaveServiceError("Failed to create leave application.", 500);
@@ -397,19 +428,34 @@ export async function decideApplication(
     */
 
     if (action === "approved") {
-      const year = new Date(application.start_date).getFullYear();
+      const year = new Date(`${application.start_date}T00:00:00Z`,).getUTCFullYear();
 
-      await leaveBalanceModel.incrementUsedDays(
-        application.employee_id,
+      const isCompOff =
+        application.leave_type_name?.trim().toLowerCase() === "comp-off";
 
-        application.leave_type_id,
+      if (isCompOff) {
+        const balanceUpdated = await useCompOffBalance(
+          application.employee_id,
+          year,
+          application.total_days,
+          connection,
+        );
 
-        year,
-
-        application.total_days,
-
-        connection,
-      );
+        if (!balanceUpdated) {
+          throw new LeaveServiceError(
+            "Insufficient Comp-Off balance. The request cannot be approved.",
+            409,
+          );
+        }
+      } else {
+        await leaveBalanceModel.incrementUsedDays(
+          application.employee_id,
+          application.leave_type_id,
+          year,
+          application.total_days,
+          connection,
+        );
+      }
     }
 
     /*
@@ -541,27 +587,167 @@ export async function getApplicationStatus(
   */
 
   const year = new Date(application.start_date).getFullYear();
+  let remainingLeaves: number | null = null;
 
-  const balance = await leaveBalanceModel.getBalance(
-    application.employee_id,
+  const isCompOff = application.leave_type_name?.trim().toLowerCase() === "comp-off";
+  if (isCompOff) {
+    // Comp-Off uses the dedicated Comp-Off balance
+    const compOffBalance = await getCompOffBalance(
+      application.employee_id,
+      year,
+    );
 
-    application.leave_type_id,
+    remainingLeaves = compOffBalance.available_days;
+  } else {
+    // Normal leave uses the regular leave balance
+    const balance = await leaveBalanceModel.getBalance(
+      application.employee_id,
+      application.leave_type_id,
+      year,
+    );
 
-    year,
-  );
+    remainingLeaves = balance
+      ? balance.allocated_days - balance.used_days
+      : null;
+  }
 
   return {
     application,
-
-    remainingLeaves: balance
-      ? balance.allocated_days - balance.used_days
-      : null,
+    remainingLeaves,
   };
 }
 
-/*
-  EXPORTS
-*/
+// logic for the cancellation leave doesnt use the days
+export async function cancelLeaveApplication(
+  applicationId: number,
+  requesterId: number,
+) {
+  const application =
+    await leaveApplicationModel.findById(applicationId);
+
+  if (!application) {
+    throw new LeaveServiceError(
+      "Leave application not found.",
+      404,
+    );
+  }
+  // Prevent cancellation after the leave has already started.
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const leaveStartDate = new Date(
+  `${application.start_date}T00:00:00`,
+);
+leaveStartDate.setHours(0, 0, 0, 0);
+
+if (leaveStartDate <= today) {
+  throw new LeaveServiceError(
+    "Leave cannot be cancelled after the leave start date.",
+    400,
+  );
+}
+
+  // Only the employee who applied for the leave can cancel it.
+  if (application.employee_id !== requesterId) {
+    throw new LeaveServiceError(
+      "You are not authorized to cancel this leave.",
+      403,
+    );
+  }
+
+  if (
+    application.status !== "pending" &&
+    application.status !== "approved"
+  ) {
+    throw new LeaveServiceError(
+      "Only pending or approved leave applications can be cancelled.",
+      400,
+    );
+  }
+
+  // Prevent cancellation once the leave has started.
+leaveStartDate.setHours(0, 0, 0, 0);
+
+if (leaveStartDate <= today) {
+  throw new LeaveServiceError(
+    "Leave cannot be cancelled after the leave start date.",
+    400,
+  );
+}
+
+  const wasApproved = application.status === "approved";
+
+  const year = new Date(
+    `${application.start_date}T00:00:00Z`,
+  ).getUTCFullYear();
+
+  const isCompOff =
+    application.leave_type_name?.trim().toLowerCase() === "comp-off";
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Refund balance only when an approved leave is cancelled.
+    if (wasApproved) {
+      if (isCompOff) {
+        const refunded = await refundCompOffBalance(
+          application.employee_id,
+          year,
+          Number(application.total_days),
+          connection,
+        );
+
+        if (!refunded) {
+          throw new LeaveServiceError(
+            "Unable to refund Comp-Off balance.",
+            409,
+          );
+        }
+      } else {
+        const refunded =
+          await leaveBalanceModel.refundLeaveBalance(
+            application.employee_id,
+            application.leave_type_id,
+            year,
+            Number(application.total_days),
+            connection,
+          );
+
+        if (!refunded) {
+          throw new LeaveServiceError(
+            "Unable to refund leave balance.",
+            409,
+          );
+        }
+      }
+    }
+
+    const cancelled =
+      await leaveApplicationModel.cancel(
+        application.id,
+        requesterId,
+        connection,
+      );
+
+    if (!cancelled) {
+      throw new LeaveServiceError(
+        "Leave application could not be cancelled.",
+        409,
+      );
+    }
+
+    await connection.commit();
+
+    return cancelled;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
 
 export default {
   LeaveServiceError,
