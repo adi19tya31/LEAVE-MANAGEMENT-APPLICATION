@@ -5,6 +5,8 @@ import keycloak from "./keycloak";
 
 import "./index.css";
 
+window.keycloak = keycloak;
+
 keycloak
   .init({
     onLoad: "login-required",

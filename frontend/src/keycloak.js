@@ -1,8 +1,8 @@
 import Keycloak from "keycloak-js";
 
 const keycloak = new Keycloak({
-  url: "http://192.168.1.39:8080",
-  realm: "LeaveApplication",
+  url: "https://bookstack.insightirs.com/keycloak",
+  realm: "LeaveApplicationTest",
   clientId: "leave-management-frontend",
 });
 
