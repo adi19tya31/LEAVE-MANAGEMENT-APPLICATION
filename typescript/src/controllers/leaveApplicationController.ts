@@ -170,3 +170,34 @@ export async function decide(
     next(err);
   }
 }
+
+// endPoint for the cancel leave
+// PATCH /api/leave-applications/:id/cancel — employee cancels their leave
+export async function cancelApplication(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const applicationId = Number(req.params.id);
+
+    if (!Number.isInteger(applicationId) || applicationId <= 0) {
+      res.status(400).json({
+        error: "Invalid leave application ID.",
+      });
+      return;
+    }
+
+    const updated = await leaveService.cancelLeaveApplication(
+      applicationId,
+      req.user!.id,
+    );
+
+    res.json({
+      message: "Leave application cancelled successfully.",
+      application: updated,
+    });
+  } catch (err) {
+    next(err);
+  }
+}

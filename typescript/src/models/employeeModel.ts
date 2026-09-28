@@ -15,6 +15,7 @@ export function isValidPan(value: string): boolean {
 }
 
 interface CreateEmployeeInput {
+  keycloakId?: string | null;
   name: string;
   company?: string | null;
   employeeCode?: string | null;
@@ -80,6 +81,50 @@ async function findByEmail(email: string): Promise<Employee | null> {
   return rows[0] ?? null;
 }
 
+
+// Find an employee by email for authentication purposes.
+
+async function findAuthUserByEmail(
+  email: string
+): Promise<{
+  Emp_id: number;
+  keycloak_id: string ;
+  name: string;
+  email: string;
+  role_id: number;
+  role_name: string;
+  status: string;
+} | null> {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `
+    SELECT
+      e.Emp_id,
+      e.keycloak_id,
+      e.name,
+      e.email,
+      e.role_id,
+      r.name AS role_name,
+      e.status
+    FROM employees e
+    INNER JOIN roles r
+      ON r.id = e.role_id
+    WHERE e.email = ?
+    LIMIT 1
+    `,
+    [email],
+  );
+
+  return (rows[0] as {
+    Emp_id: number;
+    keycloak_id: string ;
+    name: string;
+    email: string;
+    role_id: number;
+    role_name: string;
+    status: string;
+  }) ?? null;
+}
+
 async function getReportingTo(empId: number): Promise<number | null> {
   const employee = await findById(empId);
   if (!employee) throw new Error("Employee not found");
@@ -101,6 +146,7 @@ async function findOwnerIds(): Promise<number[]> {
 
 async function create(input: CreateEmployeeInput): Promise<Employee | null> {
   const {
+    keycloakId,
     name,
     company,
     employeeCode,
@@ -111,6 +157,7 @@ async function create(input: CreateEmployeeInput): Promise<Employee | null> {
     roleId,
     deptId,
     reportingTo,
+    
   } = input;
 
   if (aadharNo && !isValidAadhar(aadharNo)) {
@@ -122,9 +169,10 @@ async function create(input: CreateEmployeeInput): Promise<Employee | null> {
 
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO employees
-       (name, company, employee_code, aadhar_no, pan_no, email, password_hash, role_id, Dept_id, reporting_to, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())`,
+       (keycloak_id, name, company, employee_code, aadhar_no, pan_no, email, password_hash, role_id, Dept_id, reporting_to, status, created_at )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())`,
     [
+      keycloakId ?? null,
       name,
       company ?? null,
       employeeCode ?? null,
@@ -211,6 +259,7 @@ export default {
   findAll,
   findById,
   findByEmail,
+  findAuthUserByEmail,
   getReportingTo,
   findOwnerIds,
   create,

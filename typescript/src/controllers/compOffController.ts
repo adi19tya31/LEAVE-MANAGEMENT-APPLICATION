@@ -2,8 +2,13 @@ import { Request, Response, NextFunction } from "express";
 import compOffModel from "../models/compOffModel";
 import employeeModel from "../models/employeeModel";
 import pool from "../config/db";
+<<<<<<< Updated upstream
 import { sendNotification } from "../services/notificationServices";
 
+=======
+import  * as compoffServices from "../services/compoffServices"
+import { addCompOffBalance } from "../models/compoffBalancesModel";
+>>>>>>> Stashed changes
 function validDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
 }
@@ -147,6 +152,36 @@ export async function decideCompOff(req: Request, res: Response, next: NextFunct
     } finally {
       connection.release();
     }
+  } catch (err) {
+    next(err);
+  }
+}
+
+// mark compoff as completed
+export async function markCompOffAsWorked(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const compOffId = Number(req.params.id);
+
+    if (!Number.isInteger(compOffId) || compOffId <= 0) {
+      res.status(400).json({
+        error: "Invalid Comp-Off request ID.",
+      });
+      return;
+    }
+
+    const result = await compoffServices.markCompOffAsWorked(
+      compOffId,
+      req.user!.id,
+    );
+
+    res.json({
+      message: "Comp-Off marked as worked successfully.",
+      data: result,
+    });
   } catch (err) {
     next(err);
   }

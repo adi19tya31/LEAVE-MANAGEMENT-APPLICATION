@@ -2,57 +2,102 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
-import * as authApi from "../api/authApi";
 
-const STORAGE_KEY = "leave-management-auth";
+import keycloak from "../keycloak";
+import { apiFetch } from "../api/client";
+
 const AuthContext = createContext(null);
 
-function readStoredAuth() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }) {
-  const stored = readStoredAuth();
-  const [token, setToken] = useState(stored?.token || null);
-  const [user, setUser] = useState(stored?.user || null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback(async (email, password) => {
-    const result = await authApi.login(email, password);
-    const next = { token: result.token, user: result.employee };
-    setToken(next.token);
-    setUser(next.user);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    return result;
+  const loadUser = useCallback(async () => {
+    if (!keycloak.authenticated) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const data = await apiFetch("/api/auth/me");
+
+      console.log(
+        "APPLICATION USER:",
+        data.user
+      );
+
+      setUser(data.user);
+    } catch (error) {
+      console.error(
+        "Failed to load application user:",
+        error
+      );
+
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem(STORAGE_KEY);
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  const logout = useCallback(async () => {
+    try {
+      setUser(null);
+
+      await keycloak.logout({
+        redirectUri:
+          window.location.origin,
+      });
+    } catch (error) {
+      console.error(
+        "Keycloak logout failed:",
+        error
+      );
+    }
   }, []);
 
   const value = useMemo(
     () => ({
-      token,
+      token: keycloak.token,
       user,
-      isAuthenticated: Boolean(token && user),
-      login,
+      loading,
+      isAuthenticated:
+        Boolean(keycloak.authenticated),
       logout,
+      refreshUser: loadUser,
     }),
-    [token, user, login, logout],
+    [
+      user,
+      loading,
+      logout,
+      loadUser,
+    ]
   );
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-  const value = useContext(AuthContext);
-  if (!value) throw new Error("useAuth must be used inside AuthProvider");
+  const value =
+    useContext(AuthContext);
+
+  if (!value) {
+    throw new Error(
+      "useAuth must be used inside AuthProvider"
+    );
+  }
+
   return value;
 }

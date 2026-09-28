@@ -6,6 +6,7 @@ import {
   getStatus,
   pendingForApprover,
   decide,
+  cancelApplication,
   teamHistory,
   calendarLeaves,
 } from "../controllers/leaveApplicationController";
@@ -45,7 +46,7 @@ router.get(
   calendarLeaves,
 )
 
-
+router.patch("/leave-applications/:id/cancel", cancelApplication);
 router.patch("/leave-applications/:id/decision", decide);
 
 // shared — applicant or approver can poll status

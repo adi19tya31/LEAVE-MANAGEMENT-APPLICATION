@@ -1,6 +1,7 @@
 import pool from "../config/db";
 import { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
+
 export type CompOffStatus = "pending" | "approved" | "rejected";
 
 export interface CompOffRequest {
@@ -13,6 +14,7 @@ export interface CompOffRequest {
   applied_on: string;
   decided_on: string | null;
   remarks: string | null;
+  completed_at:string | null;
 }
 
 export interface CompOffWithNames extends CompOffRequest {
@@ -108,6 +110,25 @@ async function updateDecision(
   );
 }
 
+//mark as work
+async function markAsWorked(
+  id: number,
+  employeeId: number,
+  connection: Pool | PoolConnection = pool,
+): Promise<boolean> {
+  const [result] = await connection.query<ResultSetHeader>(
+    `UPDATE comp_off_requests
+     SET completed_at = NOW()
+     WHERE id = ?
+       AND employee_id = ?
+       AND status = 'approved'
+       AND completed_at IS NULL
+       AND work_date <= CURDATE()`,
+    [id, employeeId],
+  );
+
+  return result.affectedRows > 0;
+}
 
 export default {
   create,
@@ -117,4 +138,5 @@ export default {
   findTeamHistory,
   findAllHistory,
   updateDecision,
+  markAsWorked
 };

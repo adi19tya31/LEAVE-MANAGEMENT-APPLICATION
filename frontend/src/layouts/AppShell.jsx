@@ -22,7 +22,37 @@ import { useEffect, useState, useRef } from "react";
 import * as notificationApi from "../api/notificationApi";
 
 export default function AppShell() {
-  const { user, logout, token } = useAuth();
+  const { user, logout, token, loading } = useAuth();
+
+if (loading) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      Loading...
+    </div>
+  );
+}
+
+if (!user) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      Unable to load user information.
+    </div>
+  );
+}
 
   const navigate = useNavigate();
 
@@ -275,6 +305,12 @@ export default function AppShell() {
             to: "/departments",
             label: "Departments",
             icon: Building2,
+          },
+
+          {
+            to: "/leave-types",
+            label: "Leave Types",
+            icon: ClipboardList,
           },
 
           {
