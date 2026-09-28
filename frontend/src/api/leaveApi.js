@@ -10,6 +10,12 @@ export const submitLeaveApplication = (token, body) =>
 export const getMyApplications = (token) =>
   apiFetch("/api/leave-applications/me", { token });
 
+export const cancelLeaveApplication = (token, id) =>
+  apiFetch(`/api/leave-applications/${id}/cancel`, {
+    method: "PATCH",
+    token,
+  });
+
 export const getPendingApplications = (token) =>
   apiFetch("/api/leave-applications/pending", { token });
 
