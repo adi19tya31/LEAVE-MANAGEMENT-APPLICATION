@@ -1,31 +1,17 @@
 import keycloak from "../keycloak";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "http://localhost:5000";
+  import.meta.env.VITE_API_BASE_URL || "https://localhost:5000";
 
 export async function apiFetch(
   path,
-  {
-    method = "GET",
-    token,
-    body,
-    signal,
-  } = {}
+  { method = "GET", token, body, signal } = {},
 ) {
-
   if (keycloak.authenticated) {
-
     try {
-
       await keycloak.updateToken(30);
-
     } catch (error) {
-
-      console.error(
-        "Failed to refresh Keycloak token:",
-        error
-      );
+      console.error("Failed to refresh Keycloak token:", error);
 
       await keycloak.login();
       return;
@@ -34,33 +20,26 @@ export async function apiFetch(
     token = keycloak.token;
   }
 
-  const response = await fetch(
-    `${API_BASE_URL}${path}`,
-    {
-      method,
-      signal,
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    signal,
 
-      headers: {
-        ...(body
-          ? {
-              "Content-Type":
-                "application/json",
-            }
-          : {}),
+    headers: {
+      ...(body
+        ? {
+            "Content-Type": "application/json",
+          }
+        : {}),
 
-        ...(token
-          ? {
-              Authorization:
-                `Bearer ${token}`,
-            }
-          : {}),
-      },
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {}),
+    },
 
-      body: body
-        ? JSON.stringify(body)
-        : undefined,
-    }
-  );
+    body: body ? JSON.stringify(body) : undefined,
+  });
 
   let data = null;
 
@@ -69,10 +48,8 @@ export async function apiFetch(
   } catch {}
 
   if (!response.ok) {
-
     throw new Error(
-      data?.error ||
-      `Request failed with status ${response.status}`
+      data?.error || `Request failed with status ${response.status}`,
     );
   }
 
