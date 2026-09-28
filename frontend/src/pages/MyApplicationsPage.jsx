@@ -19,16 +19,68 @@ function formatDayType(dayType) {
   }
 }
 
+function canCancelApplication(application) {
+  const today = getTodayLocalDate();
+  const startDate = application.start_date?.slice(0, 10);
+
+  const validStatus =
+    application.status === "pending" ||
+    application.status === "approved";
+
+  return validStatus && startDate && startDate > today;
+}
+
 export default function MyApplicationsPage() {
   const { token } = useAuth();
   const [apps, setApps] = useState(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [cancellingId, setCancellingId] = useState(null);
+  async function loadApplications() {
+    try {
+      setError("");
+
+      const data = await leaveApi.getMyApplications(token);
+
+      setApps(data);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  // useEffect(() => {
+  //   leaveApi
+  //     .getMyApplications(token)
+  //     .then(setApps)
+  //     .catch((e) => setError(e.message));
+  // }, [token]);
   useEffect(() => {
-    leaveApi
-      .getMyApplications(token)
-      .then(setApps)
-      .catch((e) => setError(e.message));
+    loadApplications();
   }, [token]);
+  async function handleCancel(application) {
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel this ${application.leave_type_name} leave?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setError("");
+      setSuccess("");
+      setCancellingId(application.id);
+
+      await leaveApi.cancelLeaveApplication(token, application.id);
+      setSuccess("Leave application cancelled successfully.");
+
+      await loadApplications();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setCancellingId(null);
+    }
+  }
   return (
     <div className="max-w-3xl">
       <h2 className="font-serif text-[22px] text-[#1E2761]">My applications</h2>
@@ -84,9 +136,23 @@ export default function MyApplicationsPage() {
                 </p>
               </div>
 
-              {/* Status */}
+              {/* Status + cancle */}
 
-              <StatusBadge status={a.status} />
+              <div className="flex flex-col items-end gap-2">
+                <StatusBadge status={a.status} />
+                 {canCancelApplication(a) && (
+                  <button
+                    type="button"
+                    onClick={() => handleCancel(a)}
+                    disabled={cancellingId === a.id}
+                    className="rounded-lg border border-[#D9534F] px-3 py-1.5 text-[12px] font-semibold text-[#D9534F] transition hover:bg-[#FBEAEA] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {cancellingId === a.id
+                      ? "Cancelling..."
+                      : "Cancel Leave"}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
