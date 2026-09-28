@@ -33,9 +33,15 @@ app.use("/api",leaveTypeRoutes)
 
 
 // 404 for anything unmatched
-app.use((req: Request, res: Response) =>
-  res.status(404).json({ error: "Route not found." }),
-);
+// app.use((req: Request, res: Response) =>
+//   res.status(404).json({ error: "Route not found." }),
+
+// );
+
+app.use((req, res, next) => {
+  console.log("REQUEST:", req.method, req.originalUrl);
+  next();
+});
 
 // must be registered last — catches every next(err) from the routes above
 app.use(errorHandler);
