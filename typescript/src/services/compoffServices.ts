@@ -1,6 +1,7 @@
 import pool from "../config/db";
 import compOffModel from "../models/compOffModel";
-import { addCompOffBalance } from "../models/compoffBalancesModel";
+import { addCompOffBalance , getCompOffBalance} from "../models/compoffBalancesModel";
+
 
 export async function markCompOffAsWorked(
   compOffId: number,
@@ -77,4 +78,11 @@ export async function markCompOffAsWorked(
   } finally {
     connection.release();
   }
+}
+
+//get compoffBalance
+export async function getMyCompOffBalance(employeeId: number) {
+  const year = new Date().getFullYear();
+
+  return await getCompOffBalance(employeeId, year);
 }

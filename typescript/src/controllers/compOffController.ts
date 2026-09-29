@@ -4,7 +4,7 @@ import employeeModel from "../models/employeeModel";
 import pool from "../config/db";
 import { sendNotification } from "../services/notificationServices";
 import * as compoffServices from "../services/compoffServices";
-import { addCompOffBalance } from "../models/compoffBalancesModel";
+//import { addCompOffBalance } from "../models/compoffBalancesModel";
 
 function validDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
@@ -179,6 +179,24 @@ export async function markCompOffAsWorked(
       message: "Comp-Off marked as worked successfully.",
       data: result,
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+//compoff Balance logic 
+// get current employee's Comp-Off balance
+export async function myCompOffBalance(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const balance = await compoffServices.getMyCompOffBalance(
+      req.user!.id,
+    );
+
+    res.json(balance);
   } catch (err) {
     next(err);
   }
