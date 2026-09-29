@@ -16,7 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {
-  // console.log("REQUEST:", req.method, req.originalUrl);
+   console.log(" app.ts REQUEST:", req.method, req.originalUrl);
   next();
 });
 
@@ -38,10 +38,10 @@ app.use("/api",leaveTypeRoutes)
 
 // );
 
-app.use((req, res, next) => {
-  console.log("REQUEST:", req.method, req.originalUrl);
-  next();
-});
+// app.use((req, res, next) => {
+//   console.log("REQUEST:", req.method, req.originalUrl);
+//   next();
+// });
 
 // must be registered last — catches every next(err) from the routes above
 app.use(errorHandler);
