@@ -2,8 +2,4 @@ node_modules/
 dist/
 .env
 *.log
-<<<<<<< Updated upstream
-*_dump_*.sql
-=======
 DumpDatabase.sql
->>>>>>> Stashed changes
