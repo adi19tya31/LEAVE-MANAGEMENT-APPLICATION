@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS comp_off_requests (
   employee_id INT NOT NULL,
   work_date DATE NOT NULL,
   reason TEXT NOT NULL,
-  status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  status ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending',
   approver_id INT NOT NULL,
   applied_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   decided_on DATETIME NULL,
@@ -14,3 +14,6 @@ CREATE TABLE IF NOT EXISTS comp_off_requests (
   INDEX idx_comp_off_approver_status (approver_id, status),
   INDEX idx_comp_off_work_date (work_date)
 );
+
+ALTER TABLE comp_off_requests
+  MODIFY COLUMN status ENUM('pending','approved','rejected','cancelled') NOT NULL DEFAULT 'pending';

@@ -214,7 +214,7 @@ export default function DashboardPage() {
           const [leaves, compOffs, pendingLeaves, pendingCompOffs] =
             await Promise.all([
               leaveApi.getTeamApplications(token),
-              compOffApi.getTeamCompOffHistory(token),
+              compOffApi.getCompOffTeamHistory(token),
               leaveApi.getPendingApplications(token),
               compOffApi.getPendingCompOffs(token),
             ]);

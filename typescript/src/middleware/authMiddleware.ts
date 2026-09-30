@@ -270,6 +270,7 @@ export async function requireAuth(
     // ==================================================
 
     next();
+    return;
   } catch (error) {
     // ==================================================
     // KEYCLOAK AUTHENTICATION ERROR
