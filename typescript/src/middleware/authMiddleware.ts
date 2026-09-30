@@ -157,13 +157,13 @@ export async function requireAuth(
 
       algorithms: ["RS256"],
     });
-      
+
     // ==================================================
     // VERIFY CLIENT
     // ==================================================
 
     if (payload.azp !== KEYCLOAK_CLIENT_ID) {
-      
+
       res.status(401).json({
         error: "Token was not issued for this application.",
       });
@@ -190,7 +190,7 @@ export async function requireAuth(
     // ==================================================
 
     const employee = await employeeModel.findAuthUserByEmail(email);
-   
+
     if (!employee) {
       res.status(403).json({
         error: "Authenticated Keycloak user is not registered as an employee.",
@@ -277,10 +277,10 @@ export async function requireAuth(
     // ==================================================
 
     console.error("Keycloak authentication failed:", error);
-    
+
   }
 
-  
+
 
   res.status(401).json({
     error: "Invalid or expired Keycloak token.",
