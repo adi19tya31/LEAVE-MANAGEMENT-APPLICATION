@@ -12,6 +12,10 @@ import {
   TextInput,
 } from "../components/ui";
 
+function isCompOffLeaveType(name) {
+  return /^comp[\s_-]*off(?:[\s_-]+leave)?$/i.test(name.trim());
+}
+
 export default function ApplyLeavePage() {
   const { token } = useAuth();
   const [leaveTypes, setLeaveTypes] = useState([]);
@@ -165,8 +169,17 @@ export default function ApplyLeavePage() {
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           {leaveTypes.map((t) => {
             const bal = balances.find((b) => b.leave_type_id === t.id);
-            const left = bal ? bal.remaining_days : t.max_days_per_year;
-            const total = bal ? bal.allocated_days : t.max_days_per_year;
+            const isCompOff = isCompOffLeaveType(t.name);
+            const left = bal
+              ? bal.remaining_days
+              : isCompOff
+                ? 0
+                : t.max_days_per_year;
+            const total = bal
+              ? bal.allocated_days
+              : isCompOff
+                ? 0
+                : t.max_days_per_year;
             const pct =
               total > 0 ? Math.max(0, Math.min(100, (left / total) * 100)) : 0;
             const active = t.id === leaveTypeId;

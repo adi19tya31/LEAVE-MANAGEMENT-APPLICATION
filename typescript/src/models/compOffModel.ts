@@ -2,7 +2,7 @@ import pool from "../config/db";
 import { Pool, PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 
-export type CompOffStatus = "pending" | "approved" | "rejected";
+export type CompOffStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export interface CompOffRequest {
   id: number;
@@ -37,8 +37,11 @@ async function create(input: {
   return findById(result.insertId);
 }
 
-async function findById(id: number): Promise<CompOffWithNames | null> {
-  const [rows] = await pool.query<(CompOffWithNames & RowDataPacket)[]>(
+async function findById(
+  id: number,
+  connection: Pool | PoolConnection = pool,
+): Promise<CompOffWithNames | null> {
+  const [rows] = await connection.query<(CompOffWithNames & RowDataPacket)[]>(
     `SELECT c.*, e.name AS employee_name, a.name AS approver_name
      FROM comp_off_requests c
      JOIN employees e ON e.Emp_id = c.employee_id
@@ -98,7 +101,7 @@ async function findAllHistory(): Promise<CompOffWithNames[]> {
 async function updateDecision(
   id: number,
   approverId: number,
-  status: Exclude<CompOffStatus, "pending">,
+  status: Exclude<CompOffStatus, "pending" | "cancelled">,
   remarks: string | null,
   connection: Pool | PoolConnection = pool,
 ): Promise<void> {
@@ -108,6 +111,28 @@ async function updateDecision(
      WHERE id = ? AND approver_id = ? AND status = 'pending'`,
     [status, remarks, id, approverId],
   );
+}
+
+async function cancel(
+  id: number,
+  employeeId: number,
+  connection: Pool | PoolConnection = pool,
+): Promise<CompOffWithNames | null> {
+  const [result] = await connection.query<ResultSetHeader>(
+    `UPDATE comp_off_requests
+     SET status = 'cancelled', decided_on = NOW()
+     WHERE id = ?
+       AND employee_id = ?
+       AND status IN ('pending', 'approved')
+       AND completed_at IS NULL`,
+    [id, employeeId],
+  );
+
+  if (result.affectedRows === 0) {
+    return null;
+  }
+
+  return findById(id, connection);
 }
 
 //mark as work
@@ -138,5 +163,6 @@ export default {
   findTeamHistory,
   findAllHistory,
   updateDecision,
+  cancel,
   markAsWorked
 };

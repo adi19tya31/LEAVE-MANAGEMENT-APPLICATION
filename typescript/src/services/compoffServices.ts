@@ -2,6 +2,85 @@ import pool from "../config/db";
 import compOffModel from "../models/compOffModel";
 import { addCompOffBalance , getCompOffBalance} from "../models/compoffBalancesModel";
 
+export class CompOffServiceError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 400) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
+export async function cancelCompOffRequest(
+  compOffId: number,
+  employeeId: number,
+) {
+  const existing = await compOffModel.findById(compOffId);
+
+  if (!existing) {
+    throw new CompOffServiceError("Comp-Off request not found.", 404);
+  }
+
+  if (existing.employee_id !== employeeId) {
+    throw new CompOffServiceError(
+      "You are not authorized to cancel this Comp-Off request.",
+      403,
+    );
+  }
+
+  if (existing.status !== "pending" && existing.status !== "approved") {
+    throw new CompOffServiceError(
+      "Only pending or approved Comp-Off requests can be cancelled.",
+    );
+  }
+
+  if (existing.completed_at) {
+    throw new CompOffServiceError(
+      "A Comp-Off request marked as worked cannot be cancelled.",
+    );
+  }
+
+  const today = new Date();
+  const todayString = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+  const workDate = existing.work_date.slice(0, 10);
+
+  if (workDate <= todayString) {
+    throw new CompOffServiceError(
+      "Comp-Off cannot be cancelled on or after the work date.",
+    );
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const cancelled = await compOffModel.cancel(
+      existing.id,
+      employeeId,
+      connection,
+    );
+
+    if (!cancelled) {
+      throw new CompOffServiceError(
+        "Comp-Off request could not be cancelled.",
+        409,
+      );
+    }
+
+    await connection.commit();
+    return cancelled;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
 
 export async function markCompOffAsWorked(
   compOffId: number,

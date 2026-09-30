@@ -1,7 +1,34 @@
 import { useEffect, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as compOffApi from "../api/compOffApi";
 import { Banner, StatusBadge } from "../components/ui";
+
+function workDateHasArrived(workDate) {
+  const date = new Date(`${String(workDate).slice(0, 10)}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return !Number.isNaN(date.getTime()) && date <= today;
+}
+
+function canCancelCompOffRequest(request) {
+  const today = new Date();
+  const todayString = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+  const workDate = request.work_date?.slice(0, 10);
+  const appliedDate = request.applied_on?.slice(0, 10);
+  const appliedTodayForToday =
+    appliedDate === todayString && workDate === todayString;
+
+  return (
+    (request.status === "pending" || request.status === "approved") &&
+    !request.completed_at &&
+    workDate > todayString
+  );
+}
 
 export default function CompOffPage() {
   const { token } = useAuth();
@@ -9,7 +36,10 @@ export default function CompOffPage() {
   const [reason, setReason] = useState("");
   const [history, setHistory] = useState(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const [workingId, setWorkingId] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
   const load = () =>
     compOffApi
       .getMyCompOffHistory(token)
@@ -33,6 +63,41 @@ export default function CompOffPage() {
       setBusy(false);
     }
   }
+  async function markAsWorked(id) {
+    setWorkingId(id);
+    setError("");
+    try {
+      await compOffApi.markCompOffAsWorked(token, id);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setWorkingId(null);
+    }
+  }
+
+  async function handleCancel(request) {
+    const confirmed = window.confirm(
+      "Are you sure you want to cancel this Comp-Off request?",
+    );
+
+    if (!confirmed) return;
+
+    setCancellingId(request.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      await compOffApi.cancelCompOffRequest(token, request.id);
+      setSuccess("Comp-Off request cancelled successfully.");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   return (
     <div className="max-w-5xl">
       <h2 className="font-serif text-[22px] text-[#1E2761]">Comp-Off</h2>
@@ -42,6 +107,11 @@ export default function CompOffPage() {
       {error && (
         <div className="mt-4">
           <Banner tone="error">{error}</Banner>
+        </div>
+      )}
+      {success && (
+        <div className="mt-4">
+          <Banner tone="success">{success}</Banner>
         </div>
       )}
       <form
@@ -86,7 +156,7 @@ export default function CompOffPage() {
             {history.map((x) => (
               <div
                 key={x.id}
-                className="flex items-center justify-between gap-4 px-5 py-4"
+                className="flex flex-wrap items-center justify-between gap-4 px-5 py-4"
               >
                 <div>
                   <p className="text-sm font-medium text-[#1E2761]">
@@ -94,7 +164,34 @@ export default function CompOffPage() {
                   </p>
                   <p className="text-[12px] text-[#6D7597]">{x.reason}</p>
                 </div>
-                <StatusBadge status={x.status} />
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <StatusBadge status={x.status} />
+                  {x.completed_at ? (
+                    <span className="text-xs font-medium text-[#1F7A4D]">
+                      Marked as worked
+                    </span>
+                  ) : x.status === "approved" && workDateHasArrived(x.work_date) ? (
+                    <button
+                      type="button"
+                      disabled={workingId === x.id}
+                      onClick={() => markAsWorked(x.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#1F7A4D] px-3 py-2 text-xs font-semibold text-[#1F7A4D] disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {workingId === x.id ? "Saving…" : "Mark as worked"}
+                    </button>
+                  ) : null}
+                  {canCancelCompOffRequest(x) && (
+                    <button
+                      type="button"
+                      disabled={cancellingId === x.id}
+                      onClick={() => handleCancel(x)}
+                      className="rounded-lg border border-[#D9534F] px-3 py-2 text-xs font-semibold text-[#D9534F] transition hover:bg-[#FBEAEA] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {cancellingId === x.id ? "Cancelling..." : "Cancel Comp-Off"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

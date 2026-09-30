@@ -17,6 +17,13 @@ import {
 import { ApprovalAction, LeaveApplicationWithNames } from "../types";
 import { sendNotification } from "./notificationServices";
 
+function isCompOffLeaveType(name: string | null | undefined): boolean {
+  return (
+    typeof name === "string" &&
+    /^comp[\s_-]*off(?:[\s_-]+leave)?$/i.test(name.trim())
+  );
+}
+
 export class LeaveServiceError extends Error {
   statusCode: number;
 
@@ -119,13 +126,11 @@ function calculateLeaveDays(
       if (dateString === startDate) {
         total += startDayType === "FULL_DAY" ? 1 : 0.5;
       } else if (dateString === endDate) {
-
         /*
           END DATE
         */
         total += endDayType === "FULL_DAY" ? 1 : 0.5;
       } else {
-
         /*
           MIDDLE DATE
         */
@@ -195,25 +200,17 @@ export async function applyForLeave(
   // 1. Check balance
   const year = new Date(`${startDate}T00:00:00Z`).getUTCFullYear();
 
-  const leaveType = await leaveApplicationModel.findLeaveTypeById(
-    leaveTypeId,
-  );
+  const leaveType = await leaveApplicationModel.findLeaveTypeById(leaveTypeId);
 
   if (!leaveType) {
-    throw new LeaveServiceError(
-      "Invalid leave type.",
-      404,
-    );
+    throw new LeaveServiceError("Invalid leave type.", 404);
   }
 
   let remaining: number;
 
-  if (leaveType.name.trim().toLowerCase() === "comp-off") {
+  if (isCompOffLeaveType(leaveType.name)) {
     // Comp-Off uses the dedicated Comp-Off balance.
-    const compOffBalance = await getCompOffBalance(
-      employeeId,
-      year,
-    );
+    const compOffBalance = await getCompOffBalance(employeeId, year);
 
     remaining = compOffBalance.available_days;
 
@@ -254,38 +251,34 @@ export async function applyForLeave(
   }
 
   // 3. Create the application (status defaults to 'pending')
-  const application =
-    await leaveApplicationModel.create({
+  const application = await leaveApplicationModel.create({
+    employeeId,
 
-      employeeId,
+    leaveTypeId,
 
-      leaveTypeId,
+    startDate,
 
-      startDate,
+    endDate,
 
-      endDate,
+    startDayType,
 
-      startDayType,
+    endDayType,
 
-      endDayType,
+    totalDays,
 
-      totalDays,
+    reason,
 
-      reason,
-
-      approverId,
-
-    });
+    approverId,
+  });
 
   //notify the owner or manager
   await sendNotification(
     approverId,
     "New Leave Request",
     `Employee ${employeeId} has submitted a leave request from ${startDate} to ${endDate}.`,
-    'leave_request',
-    application?.id
+    "leave_request",
+    application?.id,
   );
-
 
   if (!application) {
     throw new LeaveServiceError("Failed to create leave application.", 500);
@@ -428,10 +421,11 @@ export async function decideApplication(
     */
 
     if (action === "approved") {
-      const year = new Date(`${application.start_date}T00:00:00Z`,).getUTCFullYear();
+      const year = new Date(
+        `${application.start_date}T00:00:00Z`,
+      ).getUTCFullYear();
 
-      const isCompOff =
-        application.leave_type_name?.trim().toLowerCase() === "comp-off";
+      const isCompOff = isCompOffLeaveType(application.leave_type_name);
 
       if (isCompOff) {
         const balanceUpdated = await useCompOffBalance(
@@ -589,7 +583,8 @@ export async function getApplicationStatus(
   const year = new Date(application.start_date).getFullYear();
   let remainingLeaves: number | null = null;
 
-  const isCompOff = application.leave_type_name?.trim().toLowerCase() === "comp-off";
+  const isCompOff =
+    application.leave_type_name?.trim().toLowerCase() === "comp-off";
   if (isCompOff) {
     // Comp-Off uses the dedicated Comp-Off balance
     const compOffBalance = await getCompOffBalance(
@@ -622,30 +617,24 @@ export async function cancelLeaveApplication(
   applicationId: number,
   requesterId: number,
 ) {
-  const application =
-    await leaveApplicationModel.findById(applicationId);
+  const application = await leaveApplicationModel.findById(applicationId);
 
   if (!application) {
-    throw new LeaveServiceError(
-      "Leave application not found.",
-      404,
-    );
+    throw new LeaveServiceError("Leave application not found.", 404);
   }
   // Prevent cancellation after the leave has already started.
-const today = new Date();
-today.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-const leaveStartDate = new Date(
-  `${application.start_date}T00:00:00`,
-);
-leaveStartDate.setHours(0, 0, 0, 0);
+  const leaveStartDate = new Date(`${application.start_date}T00:00:00`);
+  leaveStartDate.setHours(0, 0, 0, 0);
 
-if (leaveStartDate <= today) {
-  throw new LeaveServiceError(
-    "Leave cannot be cancelled after the leave start date.",
-    400,
-  );
-}
+  if (leaveStartDate <= today) {
+    throw new LeaveServiceError(
+      "Leave cannot be cancelled after the leave start date.",
+      400,
+    );
+  }
 
   // Only the employee who applied for the leave can cancel it.
   if (application.employee_id !== requesterId) {
@@ -655,10 +644,7 @@ if (leaveStartDate <= today) {
     );
   }
 
-  if (
-    application.status !== "pending" &&
-    application.status !== "approved"
-  ) {
+  if (application.status !== "pending" && application.status !== "approved") {
     throw new LeaveServiceError(
       "Only pending or approved leave applications can be cancelled.",
       400,
@@ -666,23 +652,20 @@ if (leaveStartDate <= today) {
   }
 
   // Prevent cancellation once the leave has started.
-leaveStartDate.setHours(0, 0, 0, 0);
+  leaveStartDate.setHours(0, 0, 0, 0);
 
-if (leaveStartDate <= today) {
-  throw new LeaveServiceError(
-    "Leave cannot be cancelled after the leave start date.",
-    400,
-  );
-}
+  if (leaveStartDate <= today) {
+    throw new LeaveServiceError(
+      "Leave cannot be cancelled after the leave start date.",
+      400,
+    );
+  }
 
   const wasApproved = application.status === "approved";
 
-  const year = new Date(
-    `${application.start_date}T00:00:00Z`,
-  ).getUTCFullYear();
+  const year = new Date(`${application.start_date}T00:00:00Z`).getUTCFullYear();
 
-  const isCompOff =
-    application.leave_type_name?.trim().toLowerCase() === "comp-off";
+  const isCompOff = isCompOffLeaveType(application.leave_type_name);
 
   const connection = await pool.getConnection();
 
@@ -706,30 +689,25 @@ if (leaveStartDate <= today) {
           );
         }
       } else {
-        const refunded =
-          await leaveBalanceModel.refundLeaveBalance(
-            application.employee_id,
-            application.leave_type_id,
-            year,
-            Number(application.total_days),
-            connection,
-          );
+        const refunded = await leaveBalanceModel.refundLeaveBalance(
+          application.employee_id,
+          application.leave_type_id,
+          year,
+          Number(application.total_days),
+          connection,
+        );
 
         if (!refunded) {
-          throw new LeaveServiceError(
-            "Unable to refund leave balance.",
-            409,
-          );
+          throw new LeaveServiceError("Unable to refund leave balance.", 409);
         }
       }
     }
 
-    const cancelled =
-      await leaveApplicationModel.cancel(
-        application.id,
-        requesterId,
-        connection,
-      );
+    const cancelled = await leaveApplicationModel.cancel(
+      application.id,
+      requesterId,
+      connection,
+    );
 
     if (!cancelled) {
       throw new LeaveServiceError(

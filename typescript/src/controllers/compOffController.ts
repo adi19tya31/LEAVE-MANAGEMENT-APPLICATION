@@ -70,6 +70,33 @@ export async function myCompOffHistory(req: Request, res: Response, next: NextFu
   }
 }
 
+export async function cancelCompOffRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const compOffId = Number(req.params.id);
+
+    if (!Number.isInteger(compOffId) || compOffId <= 0) {
+      res.status(400).json({ error: "Invalid Comp-Off request ID." });
+      return;
+    }
+
+    const request = await compoffServices.cancelCompOffRequest(
+      compOffId,
+      req.user!.id,
+    );
+
+    res.json({
+      message: "Comp-Off request cancelled successfully.",
+      request,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function pendingCompOffs(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     res.json(await compOffModel.findPendingForApprover(req.user!.id));
