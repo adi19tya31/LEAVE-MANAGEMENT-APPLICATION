@@ -1,30 +1,25 @@
-import { Router } from "express";
+import { Router } from 'express'
+import { changePassword ,getAllEmployees,register} from '../controllers'
+import { requireAuth, requireRole } from '../middleware/authMiddleware'
+import { requireManagerOrBootstrap } from '../middleware/employeeAccess'
 
-import { getAllEmployees, register } from "../controllers/employeeController";
-
-import { changePassword } from "../controllers/changePasswordController";
-
-import { requireAuth, requireRole } from "../middleware/authMiddleware";
-
-import { requireManagerOrBootstrap } from "../middleware/employeeAccess";
-
-const router = Router();
+const router = Router()
 
 // View all employees
 
 router.get(
-  "/employees",
+  '/employees',
   requireAuth,
-  requireRole("manager", "owner"),
-  getAllEmployees,
-);
+  requireRole('manager', 'owner'),
+  getAllEmployees
+)
 
 // Register Employee
 
-router.post("/employees", requireManagerOrBootstrap, register);
+router.post('/employees', requireManagerOrBootstrap, register)
 
 // Change Password
 
-router.patch("/employees/change-password", requireAuth, changePassword);
+router.patch('/employees/change-password', requireAuth, changePassword)
 
-export default router;
+export default router

@@ -1,46 +1,29 @@
-import { Request, Response, NextFunction } from "express";
-import bcrypt from "bcryptjs";
-
-import employeeModel, {
-  isValidAadhar,
-  isValidPan,
-} from "../models/employeeModel";
-
-import roleModel from "../models/roleModel";
-import departmentModel from "../models/departmentModel";
-import leaveTypeModel from "../models/leaveTypeModel";
-import leaveBalanceModel from "../models/leaveBalanceModel";
-
-import { currentYear } from "../utils/dateUtils";
-
-import {
-  createKeycloakUser,
-} from "../services/keycloakService";
-
+import { Request, Response, NextFunction } from 'express'
+import bcrypt from 'bcryptjs'
+import  {isValidAadhar,isValidPan} from '../models/employeeModel'
+import {roleModel,employeeModel,departmentModel,leaveTypeModel,leaveBalanceModel} from '../models'
+import { currentYear } from '../utils/dateUtils'
+import { createKeycloakUser } from '../services'
 
 interface RegisterEmployeeBody {
-  name: string;
-  company?: string;
-  employeeCode?: string;
-  aadharNo?: string;
-  panNo?: string;
-  email: string;
-  password: string;
-  roleName: string;
-  departmentName?: string;
-  reportingTo?: number;
+  name: string
+  company?: string
+  employeeCode?: string
+  aadharNo?: string
+  panNo?: string
+  email: string
+  password: string
+  roleName: string
+  departmentName?: string
+  reportingTo?: number
 }
-
-
 
 export async function register(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
-
   try {
-
     const {
       name,
       company,
@@ -52,319 +35,224 @@ export async function register(
       roleName,
       departmentName,
       reportingTo,
-    } = req.body as RegisterEmployeeBody;
-
+    } = req.body as RegisterEmployeeBody
 
     // -----------------------------------------
     // Required fields
     // -----------------------------------------
 
     if (!name || !email || !password || !roleName) {
-
       res.status(400).json({
-        error:
-          "name, email, password and roleName are required.",
-      });
+        error: 'name, email, password and roleName are required.',
+      })
 
-      return;
+      return
     }
-
 
     // -----------------------------------------
     // Aadhaar validation
     // -----------------------------------------
 
-    if (
-      aadharNo &&
-      !isValidAadhar(aadharNo)
-    ) {
-
+    if (aadharNo && !isValidAadhar(aadharNo)) {
       res.status(400).json({
-        error:
-          "Aadhaar number must be exactly 12 digits.",
-      });
+        error: 'Aadhaar number must be exactly 12 digits.',
+      })
 
-      return;
+      return
     }
-
 
     // -----------------------------------------
     // PAN validation
     // -----------------------------------------
 
-    if (
-      panNo &&
-      !isValidPan(panNo)
-    ) {
-
+    if (panNo && !isValidPan(panNo)) {
       res.status(400).json({
-        error:
-          "PAN must be in the format ABCDE1234F.",
-      });
+        error: 'PAN must be in the format ABCDE1234F.',
+      })
 
-      return;
+      return
     }
-
 
     // -----------------------------------------
     // Check duplicate MySQL email
     // -----------------------------------------
 
-    const existing =
-      await employeeModel.findByEmail(email);
+    const existing = await employeeModel.findByEmail(email)
 
     if (existing) {
-
       res.status(409).json({
-        error:
-          "An employee with this email already exists.",
-      });
+        error: 'An employee with this email already exists.',
+      })
 
-      return;
+      return
     }
-
 
     // -----------------------------------------
     // Resolve application role
     // -----------------------------------------
 
-    const role =
-      await roleModel.findByName(roleName);
+    const role = await roleModel.findByName(roleName)
 
     if (!role) {
-
       res.status(400).json({
-        error:
-          `Unknown role '${roleName}'.`,
-      });
+        error: `Unknown role '${roleName}'.`,
+      })
 
-      return;
+      return
     }
-
 
     // -----------------------------------------
     // Resolve department
     // -----------------------------------------
 
-    let deptId: number | null = null;
+    let deptId: number | null = null
 
     if (departmentName) {
-
-      const department =
-        await departmentModel.findByName(
-          departmentName,
-        );
+      const department = await departmentModel.findByName(departmentName)
 
       if (!department) {
-
         res.status(400).json({
-          error:
-            `Unknown department '${departmentName}'.`,
-        });
+          error: `Unknown department '${departmentName}'.`,
+        })
 
-        return;
+        return
       }
 
-      deptId = department.id;
+      deptId = department.id
     }
-
 
     // -----------------------------------------
     // Validate reporting manager
     // -----------------------------------------
 
     if (reportingTo != null) {
-
-      const manager =
-        await employeeModel.findById(
-          reportingTo,
-        );
+      const manager = await employeeModel.findById(reportingTo)
 
       if (!manager) {
-
         res.status(400).json({
-          error:
-            `No employee found with Emp_id = ${reportingTo} to report to.`,
-        });
+          error: `No employee found with Emp_id = ${reportingTo} to report to.`,
+        })
 
-        return;
+        return
       }
     }
-
 
     // -----------------------------------------
     // Get current manager/owner token
     // -----------------------------------------
 
-    const authHeader =
-      req.headers.authorization;
+    const authHeader = req.headers.authorization
 
-    if (
-      !authHeader ||
-      !authHeader.startsWith("Bearer ")
-    ) {
-
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       res.status(401).json({
-        error:
-          "Missing authorization token.",
-      });
+        error: 'Missing authorization token.',
+      })
 
-      return;
+      return
     }
 
-    const accessToken =
-      authHeader.substring(7);
-
+    const accessToken = authHeader.substring(7)
 
     // -----------------------------------------
     // CREATE USER IN KEYCLOAK
     // -----------------------------------------
 
-    console.log(
-      "Creating user in Keycloak:",
+    console.log('Creating user in Keycloak:', email)
+
+    const keycloakUser = await createKeycloakUser(accessToken, {
+      name,
       email,
-    );
+      password,
+    })
 
-    const keycloakUser =
-      await createKeycloakUser(
-        accessToken,
-        {
-          name,
-          email,
-          password,
-        },
-      );
+    const keycloakId = keycloakUser.id
 
-    const keycloakId =
-      keycloakUser.id;
-
-
-    console.log(
-      "Keycloak user created:",
-      keycloakId,
-    );
-
+    console.log('Keycloak user created:', keycloakId)
 
     // -----------------------------------------
     // Hash password
     // -----------------------------------------
 
-    const passwordHash =
-      await bcrypt.hash(
-        password,
-        10,
-      );
-
+    const passwordHash = await bcrypt.hash(password, 10)
 
     // -----------------------------------------
     // CREATE EMPLOYEE IN MYSQL
     // -----------------------------------------
 
-    const employee =
-      await employeeModel.create({
+    const employee = await employeeModel.create({
+      keycloakId,
 
-        keycloakId,
+      name,
+      company,
+      employeeCode,
+      aadharNo,
+      panNo,
+      email,
 
-        name,
-        company,
-        employeeCode,
-        aadharNo,
-        panNo,
-        email,
+      passwordHash,
 
-        passwordHash,
+      roleId: role.id,
 
-        roleId: role.id,
+      deptId,
 
-        deptId,
-
-        reportingTo:
-          reportingTo ?? null,
-      });
-
+      reportingTo: reportingTo ?? null,
+    })
 
     if (!employee) {
-
       res.status(500).json({
-        error:
-          "Failed to create employee.",
-      });
+        error: 'Failed to create employee.',
+      })
 
-      return;
+      return
     }
-
 
     // -----------------------------------------
     // Create leave balances
     // -----------------------------------------
 
-    const leaveTypes =
-      await leaveTypeModel.findAll();
+    const leaveTypes = await leaveTypeModel.findAll()
 
-    const year =
-      currentYear();
+    const year = currentYear()
 
     for (const lt of leaveTypes) {
-
       await leaveBalanceModel.create({
+        employeeId: employee.Emp_id,
 
-        employeeId:
-          employee.Emp_id,
-
-        leaveTypeId:
-          lt.id,
+        leaveTypeId: lt.id,
 
         year,
 
-        allocatedDays:
-          lt.max_days_per_year,
-
-      });
+        allocatedDays: lt.max_days_per_year,
+      })
     }
-
 
     // -----------------------------------------
     // SUCCESS
     // -----------------------------------------
 
     res.status(201).json({
-
-      id:
-        employee.Emp_id,
+      id: employee.Emp_id,
 
       keycloakId,
 
-      name:
-        employee.name,
+      name: employee.name,
 
-      email:
-        employee.email,
+      email: employee.email,
 
-      role:
-        role.name,
+      role: role.name,
 
-      department:
-        departmentName ?? null,
+      department: departmentName ?? null,
 
-      reportingTo:
-        employee.reporting_to,
+      reportingTo: employee.reporting_to,
 
-      leaveBalancesCreated:
-        leaveTypes.length,
-
-    });
-
+      leaveBalancesCreated: leaveTypes.length,
+    })
   } catch (err) {
+    console.error('Employee registration failed:', err)
 
-    console.error(
-      "Employee registration failed:",
-      err,
-    );
-
-    next(err);
+    next(err)
   }
 }
-
 
 // -----------------------------------------
 // GET ALL EMPLOYEES
@@ -373,20 +261,13 @@ export async function register(
 export async function getAllEmployees(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
-
   try {
+    const employees = await employeeModel.findAll()
 
-    const employees =
-      await employeeModel.findAll();
-
-    res.status(200).json(
-      employees,
-    );
-
+    res.status(200).json(employees)
   } catch (err) {
-
-    next(err);
+    next(err)
   }
 }

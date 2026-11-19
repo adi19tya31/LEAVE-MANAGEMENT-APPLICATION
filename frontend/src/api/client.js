@@ -2,7 +2,7 @@ import keycloak from "../keycloak";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  `https://${window.location.hostname}:5000`;
+  `https://${window.location.hostname}:5002`;
 
 export async function apiFetch(
   path,

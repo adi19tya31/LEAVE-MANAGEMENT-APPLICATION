@@ -1,24 +1,23 @@
-import axios from "axios";
+import axios from 'axios'
 
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL!;
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!;
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL!
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!
 
 interface CreateKeycloakUserInput {
-  name: string;
-  email: string;
-  password: string;
+  name: string
+  email: string
+  password: string
 }
 
 interface KeycloakUser {
-  id: string;
+  id: string
 }
 
 export async function createKeycloakUser(
   accessToken: string,
-  input: CreateKeycloakUserInput,
+  input: CreateKeycloakUserInput
 ): Promise<KeycloakUser> {
-
-  const username = input.email;
+  const username = input.email
 
   const response = await axios.post(
     `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users`,
@@ -31,7 +30,7 @@ export async function createKeycloakUser(
 
       credentials: [
         {
-          type: "password",
+          type: 'password',
           value: input.password,
           temporary: true,
         },
@@ -40,55 +39,39 @@ export async function createKeycloakUser(
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       validateStatus: () => true,
-    },
-  );
+    }
+  )
 
   if (response.status === 409) {
-    throw new Error(
-      "A Keycloak user with this email already exists.",
-    );
+    throw new Error('A Keycloak user with this email already exists.')
   }
 
   if (response.status === 403) {
-    throw new Error(
-      "You do not have permission to create users in Keycloak.",
-    );
+    throw new Error('You do not have permission to create users in Keycloak.')
   }
 
   if (response.status < 200 || response.status >= 300) {
-    console.error(
-      "Keycloak create user error:",
-      response.status,
-      response.data,
-    );
+    console.error('Keycloak create user error:', response.status, response.data)
 
-    throw new Error(
-      "Failed to create user in Keycloak.",
-    );
+    throw new Error('Failed to create user in Keycloak.')
   }
 
   /*
    * Keycloak normally returns the created user's ID
    * in the Location response header.
    */
-  const location =
-    response.headers.location;
+  const location = response.headers.location
 
   if (!location) {
-    throw new Error(
-      "Keycloak created the user but did not return the user ID.",
-    );
+    throw new Error('Keycloak created the user but did not return the user ID.')
   }
 
-  const keycloakId =
-    location.substring(
-      location.lastIndexOf("/") + 1,
-    );
+  const keycloakId = location.substring(location.lastIndexOf('/') + 1)
 
   return {
     id: keycloakId,
-  };
+  }
 }

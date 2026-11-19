@@ -1,15 +1,11 @@
-import pool from "../config/db";
-import {
-  Pool,
-  PoolConnection,
-  RowDataPacket
-} from "mysql2/promise";
+import pool from '../config/db'
+import { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise'
 
 export async function addCompOffBalance(
   empId: number,
   year: number,
   days: number,
-  connection: Pool | PoolConnection = pool,
+  connection: Pool | PoolConnection = pool
 ): Promise<void> {
   await connection.execute(
     `
@@ -19,17 +15,17 @@ export async function addCompOffBalance(
     ON DUPLICATE KEY UPDATE
       total_days = total_days + VALUES(total_days)
     `,
-    [empId, year, days],
-  );
+    [empId, year, days]
+  )
 }
 
 export async function getCompOffBalance(
   empId: number,
-  year: number,
+  year: number
 ): Promise<{
-  total_days: number;
-  used_days: number;
-  available_days: number;
+  total_days: number
+  used_days: number
+  available_days: number
 }> {
   const [rows] = await pool.execute<RowDataPacket[]>(
     `
@@ -41,22 +37,22 @@ export async function getCompOffBalance(
     WHERE Emp_id = ?
       AND year = ?
     `,
-    [empId, year],
-  );
+    [empId, year]
+  )
 
   if (rows.length === 0) {
     return {
       total_days: 0,
       used_days: 0,
       available_days: 0,
-    };
+    }
   }
 
   return {
     total_days: Number(rows[0].total_days),
     used_days: Number(rows[0].used_days),
     available_days: Number(rows[0].available_days),
-  };
+  }
 }
 
 //logic for the use compoff balances
@@ -64,7 +60,7 @@ export async function useCompOffBalance(
   empId: number,
   year: number,
   usedDays: number,
-  connection: Pool | PoolConnection = pool,
+  connection: Pool | PoolConnection = pool
 ): Promise<boolean> {
   const [result]: any = await connection.execute(
     `
@@ -74,17 +70,17 @@ export async function useCompOffBalance(
       AND year = ?
       AND total_days - used_days >= ?
     `,
-    [usedDays, empId, year, usedDays],
-  );
+    [usedDays, empId, year, usedDays]
+  )
 
-  return result.affectedRows > 0;
+  return result.affectedRows > 0
 }
 
 export async function refundCompOffBalance(
   empId: number,
   year: number,
   days: number,
-  connection: Pool | PoolConnection = pool,
+  connection: Pool | PoolConnection = pool
 ): Promise<boolean> {
   const [result]: any = await connection.execute(
     `
@@ -94,10 +90,10 @@ export async function refundCompOffBalance(
       AND year = ?
       AND used_days >= ?
     `,
-    [days, empId, year, days],
-  );
+    [days, empId, year, days]
+  )
 
-  return result.affectedRows > 0;
+  return result.affectedRows > 0
 }
 
 export default {
@@ -105,4 +101,4 @@ export default {
   getCompOffBalance,
   useCompOffBalance,
   refundCompOffBalance,
-};
+}

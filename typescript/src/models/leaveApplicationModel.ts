@@ -1,32 +1,32 @@
-import pool from "../config/db";
+import pool from '../config/db'
 
 import {
   Pool,
   RowDataPacket,
   ResultSetHeader,
   PoolConnection,
-} from "mysql2/promise";
+} from 'mysql2/promise'
 
-import { LeaveApplicationWithNames, LeaveApplicationStatus } from "../types";
+import { LeaveApplicationWithNames, LeaveApplicationStatus } from '../types'
 
 interface CreateApplicationInput {
-  employeeId: number;
+  employeeId: number
 
-  leaveTypeId: number;
+  leaveTypeId: number
 
-  startDate: string;
+  startDate: string
 
-  endDate: string;
+  endDate: string
 
-  startDayType: "FULL_DAY" | "FIRST_HALF" | "SECOND_HALF";
+  startDayType: 'FULL_DAY' | 'FIRST_HALF' | 'SECOND_HALF'
 
-  endDayType: "FULL_DAY" | "FIRST_HALF" | "SECOND_HALF";
+  endDayType: 'FULL_DAY' | 'FIRST_HALF' | 'SECOND_HALF'
 
-  totalDays: number;
+  totalDays: number
 
-  reason: string;
+  reason: string
 
-  approverId: number;
+  approverId: number
 }
 
 // ======================================
@@ -34,7 +34,7 @@ interface CreateApplicationInput {
 // ======================================
 
 async function create(
-  input: CreateApplicationInput,
+  input: CreateApplicationInput
 ): Promise<LeaveApplicationWithNames | null> {
   const {
     employeeId,
@@ -46,7 +46,7 @@ async function create(
     endDayType,
     reason,
     approverId,
-  } = input;
+  } = input
 
   const [result] = await pool.query<ResultSetHeader>(
     `
@@ -77,13 +77,13 @@ async function create(
       startDayType,
       endDayType,
       totalDays,
-      "FULL_DAY",
+      'FULL_DAY',
       reason,
       approverId,
-    ],
-  );
+    ]
+  )
 
-  return findById(result.insertId);
+  return findById(result.insertId)
 }
 
 // ======================================
@@ -93,7 +93,7 @@ async function create(
 async function findById(
   id: number,
 
-  connection: Pool | PoolConnection = pool,
+  connection: Pool | PoolConnection = pool
 ): Promise<LeaveApplicationWithNames | null> {
   const [rows] = await connection.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
@@ -118,10 +118,10 @@ async function findById(
       WHERE la.id = ?
       `,
 
-    [id],
-  );
+    [id]
+  )
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 // ======================================
@@ -129,7 +129,7 @@ async function findById(
 // ======================================
 
 async function findByEmployee(
-  employeeId: number,
+  employeeId: number
 ): Promise<LeaveApplicationWithNames[]> {
   const [rows] = await pool.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
@@ -151,10 +151,10 @@ async function findByEmployee(
       ORDER BY la.applied_on DESC
       `,
 
-    [employeeId],
-  );
+    [employeeId]
+  )
 
-  return rows;
+  return rows
 }
 
 // ======================================
@@ -162,7 +162,7 @@ async function findByEmployee(
 // ======================================
 
 async function findTeamHistory(
-  approverId: number,
+  approverId: number
 ): Promise<LeaveApplicationWithNames[]> {
   const [rows] = await pool.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
@@ -189,10 +189,10 @@ async function findTeamHistory(
       ORDER BY la.applied_on DESC
       `,
 
-    [approverId],
-  );
+    [approverId]
+  )
 
-  return rows;
+  return rows
 }
 
 // ======================================
@@ -221,10 +221,10 @@ async function findAllHistory(): Promise<LeaveApplicationWithNames[]> {
         ON e.Emp_id = la.employee_id
 
       ORDER BY la.applied_on DESC
-      `,
-  );
+      `
+  )
 
-  return rows;
+  return rows
 }
 
 // ======================================
@@ -232,7 +232,7 @@ async function findAllHistory(): Promise<LeaveApplicationWithNames[]> {
 // ======================================
 
 async function findPendingForApprover(
-  approverId: number,
+  approverId: number
 ): Promise<LeaveApplicationWithNames[]> {
   const [rows] = await pool.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
@@ -263,10 +263,10 @@ async function findPendingForApprover(
       ORDER BY la.applied_on ASC
       `,
 
-    [approverId],
-  );
+    [approverId]
+  )
 
-  return rows;
+  return rows
 }
 
 // ======================================
@@ -278,7 +278,7 @@ async function updateStatus(
 
   status: LeaveApplicationStatus,
 
-  connection: Pool | PoolConnection = pool,
+  connection: Pool | PoolConnection = pool
 ): Promise<LeaveApplicationWithNames | null> {
   await connection.query(
     `
@@ -286,8 +286,8 @@ async function updateStatus(
     SET status = ?, decided_on = NOW()
     WHERE id = ?
     `,
-    [status, id],
-  );
+    [status, id]
+  )
 
   const [rows] = await connection.query<
     (LeaveApplicationWithNames & RowDataPacket)[]
@@ -304,17 +304,17 @@ async function updateStatus(
       ON e.Emp_id = la.employee_id
     WHERE la.id = ?
     `,
-    [id],
-  );
+    [id]
+  )
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
-//cancled the leave 
+//cancled the leave
 async function cancel(
   id: number,
   employeeId: number,
-  connection: Pool | PoolConnection = pool,
+  connection: Pool | PoolConnection = pool
 ): Promise<LeaveApplicationWithNames | null> {
   const [result] = await connection.query<ResultSetHeader>(
     `
@@ -325,11 +325,11 @@ async function cancel(
       AND employee_id = ?
       AND status IN ('pending', 'approved')
     `,
-    [id, employeeId],
-  );
+    [id, employeeId]
+  )
 
   if (result.affectedRows === 0) {
-    return null;
+    return null
   }
 
   const [rows] = await connection.query<
@@ -347,23 +347,23 @@ async function cancel(
       ON e.Emp_id = la.employee_id
     WHERE la.id = ?
     `,
-    [id],
-  );
+    [id]
+  )
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 async function findForCalendar(
-  approverId?: number,
+  approverId?: number
 ): Promise<LeaveApplicationWithNames[]> {
-  const params: number[] = [];
+  const params: number[] = []
 
-  let managerCondition = "";
+  let managerCondition = ''
 
   if (approverId) {
-    managerCondition = "WHERE la.approver_id = ?";
+    managerCondition = 'WHERE la.approver_id = ?'
 
-    params.push(approverId);
+    params.push(approverId)
   }
 
   const [rows] = await pool.query<
@@ -396,14 +396,14 @@ async function findForCalendar(
       ORDER BY la.start_date ASC
       `,
 
-    params,
-  );
+    params
+  )
 
-  return rows;
+  return rows
 }
 
 async function findLeaveTypeById(
-  leaveTypeId: number,
+  leaveTypeId: number
 ): Promise<{ id: number; name: string } | null> {
   const [rows] = await pool.query<
     (RowDataPacket & { id: number; name: string })[]
@@ -413,10 +413,10 @@ async function findLeaveTypeById(
     FROM leave_types
     WHERE id = ?
     `,
-    [leaveTypeId],
-  );
+    [leaveTypeId]
+  )
 
-  return rows[0] ?? null;
+  return rows[0] ?? null
 }
 
 export default {
@@ -436,5 +436,5 @@ export default {
 
   updateStatus,
   cancel,
-  findLeaveTypeById
-};
+  findLeaveTypeById,
+}

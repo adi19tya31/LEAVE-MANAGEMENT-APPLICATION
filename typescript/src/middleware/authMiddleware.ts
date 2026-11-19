@@ -1,8 +1,7 @@
-import { Request, Response, NextFunction } from "express";
-import { createRemoteJWKSet, jwtVerify, JWTPayload } from "jose";
-
-import employeeModel from "../models/employeeModel";
-import { AuthPayload } from "../types";
+import { Request, Response, NextFunction } from 'express'
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose'
+import {employeeModel} from '../models'
+import { AuthPayload } from '../types'
 
 // ======================================================
 // TEMPORARY TLS CONFIGURATION
@@ -28,17 +27,17 @@ import { AuthPayload } from "../types";
 // correct CA certificate chain.
 // ======================================================
 
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 // ======================================================
 // KEYCLOAK CONFIGURATION
 // ======================================================
 
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL!;
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL!
 
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!;
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!
 
-const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!;
+const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!
 
 // Remove trailing slash from Keycloak URL
 //
@@ -49,13 +48,13 @@ const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!;
 //
 // https://bookstack.insightirs.com/keycloak
 
-const NORMALIZED_KEYCLOAK_URL = KEYCLOAK_URL.replace(/\/+$/, "");
+const NORMALIZED_KEYCLOAK_URL = KEYCLOAK_URL.replace(/\/+$/, '')
 
 // ======================================================
 // KEYCLOAK ISSUER
 // ======================================================
 
-const KEYCLOAK_ISSUER = `${NORMALIZED_KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`;
+const KEYCLOAK_ISSUER = `${NORMALIZED_KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`
 
 // ======================================================
 // KEYCLOAK JWKS URL
@@ -71,15 +70,15 @@ const KEYCLOAK_ISSUER = `${NORMALIZED_KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`;
 // realms/<realm>/protocol/openid-connect/certs
 // ======================================================
 
-const KEYCLOAK_JWKS_URL = `${KEYCLOAK_ISSUER}/protocol/openid-connect/certs`;
+const KEYCLOAK_JWKS_URL = `${KEYCLOAK_ISSUER}/protocol/openid-connect/certs`
 
-console.log("Keycloak URL:", NORMALIZED_KEYCLOAK_URL);
+console.log('Keycloak URL:', NORMALIZED_KEYCLOAK_URL)
 
-console.log("Keycloak Realm:", KEYCLOAK_REALM);
+console.log('Keycloak Realm:', KEYCLOAK_REALM)
 
-console.log("Keycloak Issuer:", KEYCLOAK_ISSUER);
+console.log('Keycloak Issuer:', KEYCLOAK_ISSUER)
 
-console.log("Keycloak JWKS:", KEYCLOAK_JWKS_URL);
+console.log('Keycloak JWKS:', KEYCLOAK_JWKS_URL)
 
 // ======================================================
 // KEYCLOAK JWKS
@@ -92,30 +91,30 @@ console.log("Keycloak JWKS:", KEYCLOAK_JWKS_URL);
 // Node will accept the current certificate chain.
 // ======================================================
 
-const KEYCLOAK_JWKS = createRemoteJWKSet(new URL(KEYCLOAK_JWKS_URL));
+const KEYCLOAK_JWKS = createRemoteJWKSet(new URL(KEYCLOAK_JWKS_URL))
 
 // ======================================================
 // KEYCLOAK TOKEN TYPE
 // ======================================================
 
 interface KeycloakToken extends JWTPayload {
-  email?: string;
+  email?: string
 
-  preferred_username?: string;
+  preferred_username?: string
 
-  name?: string;
+  name?: string
 
-  azp?: string;
+  azp?: string
 
   realm_access?: {
-    roles?: string[];
-  };
+    roles?: string[]
+  }
 
   resource_access?: {
     [clientId: string]: {
-      roles?: string[];
-    };
-  };
+      roles?: string[]
+    }
+  }
 }
 
 // ======================================================
@@ -125,27 +124,27 @@ interface KeycloakToken extends JWTPayload {
 export async function requireAuth(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   // ====================================================
   // CHECK AUTHORIZATION HEADER
   // ====================================================
 
-  const header = req.headers.authorization;
+  const header = req.headers.authorization
 
-  if (!header || !header.startsWith("Bearer ")) {
+  if (!header || !header.startsWith('Bearer ')) {
     res.status(401).json({
-      error: "Missing or malformed Authorization header.",
-    });
+      error: 'Missing or malformed Authorization header.',
+    })
 
-    return;
+    return
   }
 
   // ====================================================
   // EXTRACT JWT
   // ====================================================
 
-  const token = header.substring(7);
+  const token = header.substring(7)
 
   try {
     // ==================================================
@@ -155,82 +154,81 @@ export async function requireAuth(
     const { payload } = await jwtVerify<KeycloakToken>(token, KEYCLOAK_JWKS, {
       issuer: KEYCLOAK_ISSUER,
 
-      algorithms: ["RS256"],
-    });
+      algorithms: ['RS256'],
+    })
 
     // ==================================================
     // VERIFY CLIENT
     // ==================================================
 
     if (payload.azp !== KEYCLOAK_CLIENT_ID) {
-
       res.status(401).json({
-        error: "Token was not issued for this application.",
-      });
+        error: 'Token was not issued for this application.',
+      })
 
-      return;
+      return
     }
 
     // ==================================================
     // GET EMAIL FROM KEYCLOAK
     // ==================================================
 
-    const email = payload.email || payload.preferred_username;
+    const email = payload.email || payload.preferred_username
 
     if (!email) {
       res.status(401).json({
-        error: "Keycloak token does not contain an email.",
-      });
+        error: 'Keycloak token does not contain an email.',
+      })
 
-      return;
+      return
     }
 
     // ==================================================
     // FIND EMPLOYEE IN MYSQL
     // ==================================================
 
-    const employee = await employeeModel.findAuthUserByEmail(email);
+    const employee = await employeeModel.findAuthUserByEmail(email)
 
     if (!employee) {
       res.status(403).json({
-        error: "Authenticated Keycloak user is not registered as an employee.",
-      });
+        error: 'Authenticated Keycloak user is not registered as an employee.',
+      })
 
-      return;
+      return
     }
 
     // ==================================================
     // CHECK EMPLOYEE STATUS
     // ==================================================
 
-    if (employee.status !== "active") {
+    if (employee.status !== 'active') {
       res.status(403).json({
-        error: "Employee account is not active.",
-      });
+        error: 'Employee account is not active.',
+      })
 
-      return;
+      return
     }
 
     // ==================================================
     // GET APPLICATION ROLE FROM MYSQL
     // ==================================================
 
-    const roleId = Number(employee.role_id);
+    const roleId = Number(employee.role_id)
 
-    const applicationRole = employee.role_name;
+    const applicationRole = employee.role_name
 
     // ==================================================
     // VALID APPLICATION ROLES
     // ==================================================
 
-    const validRoles = ["employee", "manager", "owner"];
+    const validRoles = ['employee', 'manager', 'owner']
 
     if (!validRoles.includes(applicationRole)) {
       res.status(403).json({
-        error: "Invalid application role configured for this employee.",
-      });
+        error: 'Invalid application role configured for this employee.',
+      })
 
-      return;
+      return
     }
 
     // ==================================================
@@ -239,10 +237,10 @@ export async function requireAuth(
 
     if (![1, 2, 3].includes(roleId)) {
       res.status(403).json({
-        error: "Invalid application role ID configured for this employee.",
-      });
+        error: 'Invalid application role ID configured for this employee.',
+      })
 
-      return;
+      return
     }
 
     // ==================================================
@@ -257,38 +255,34 @@ export async function requireAuth(
       role: applicationRole,
 
       name: employee.name,
-    };
+    }
 
     // ==================================================
     // ATTACH USER TO EXPRESS REQUEST
     // ==================================================
 
-    req.user = authPayload;
+    req.user = authPayload
 
     // ==================================================
     // CONTINUE REQUEST
     // ==================================================
 
-    next();
-    return;
+    next()
+    return
   } catch (error) {
     // ==================================================
     // KEYCLOAK AUTHENTICATION ERROR
     // ==================================================
 
-    console.error("Keycloak authentication failed:", error);
-
+    console.error('Keycloak authentication failed:', error)
   }
 
-
-
   res.status(401).json({
-    error: "Invalid or expired Keycloak token.",
-  });
+    error: 'Invalid or expired Keycloak token.',
+  })
 
-  return;
+  return
 }
-
 
 // ======================================================
 // ROLE AUTHORIZATION
@@ -300,7 +294,7 @@ export function requireRole(...allowedRoles: string[]) {
     // GET APPLICATION ROLE
     // ==================================================
 
-    const role = req.user?.role;
+    const role = req.user?.role
 
     // ==================================================
     // CHECK ROLE
@@ -310,16 +304,16 @@ export function requireRole(...allowedRoles: string[]) {
       res.status(403).json({
         error:
           `This action requires one of these roles: ` +
-          `${allowedRoles.join(", ")}.`,
-      });
+          `${allowedRoles.join(', ')}.`,
+      })
 
-      return;
+      return
     }
 
     // ==================================================
     // CONTINUE REQUEST
     // ==================================================
 
-    next();
-  };
+    next()
+  }
 }

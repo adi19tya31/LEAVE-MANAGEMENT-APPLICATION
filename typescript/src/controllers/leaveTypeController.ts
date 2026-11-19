@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from "express";
-import * as leaveTypeService from "../services/leaveTypeServices";
-import { AppError } from "../services/leaveTypeServices";
+import { Request, Response, NextFunction } from 'express'
+import * as leaveTypeService  from '../services'
+//import { AppError } from '../services'
 
 interface LeaveTypeBody {
-  name: string;
-  maxDaysPerYear: number;
+  name: string
+  maxDaysPerYear: number
 }
 
 // GET /api/leave-types
@@ -14,10 +14,10 @@ export async function getAllLeaveTypes(
   next: NextFunction
 ): Promise<void> {
   try {
-    const rows = await leaveTypeService.getAllLeaveTypes();
-    res.json(rows);
+    const rows = await leaveTypeService.getAllLeaveTypes()
+    res.json(rows)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -29,11 +29,11 @@ export async function getLeaveTypeByName(
   next: NextFunction
 ): Promise<void> {
   try {
-    const name = typeof req.query.name === "string" ? req.query.name : "";
-    const leaveType = await leaveTypeService.getLeaveTypeByName(name);
-    res.json(leaveType);
+    const name = typeof req.query.name === 'string' ? req.query.name : ''
+    const leaveType = await leaveTypeService.getLeaveTypeByName(name)
+    res.json(leaveType)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -44,16 +44,16 @@ export async function getLeaveTypeById(
   next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id)
     if (Number.isNaN(id)) {
-      res.status(400).json({ message: "id must be a number." });
-      return;
+      res.status(400).json({ message: 'id must be a number.' })
+      return
     }
 
-    const leaveType = await leaveTypeService.getLeaveTypeById(id);
-    res.json(leaveType);
+    const leaveType = await leaveTypeService.getLeaveTypeById(id)
+    res.json(leaveType)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -64,11 +64,11 @@ export async function createLeaveType(
   next: NextFunction
 ): Promise<void> {
   try {
-    const body = req.body as LeaveTypeBody;
-    const created = await leaveTypeService.createLeaveType(body);
-    res.status(201).json(created);
+    const body = req.body as LeaveTypeBody
+    const created = await leaveTypeService.createLeaveType(body)
+    res.status(201).json(created)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -79,17 +79,17 @@ export async function updateLeaveType(
   next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id)
     if (Number.isNaN(id)) {
-      res.status(400).json({ message: "id must be a number." });
-      return;
+      res.status(400).json({ message: 'id must be a number.' })
+      return
     }
 
-    const body = req.body as Partial<LeaveTypeBody>;
-    const updated = await leaveTypeService.updateLeaveType(id, body);
-    res.json(updated);
+    const body = req.body as Partial<LeaveTypeBody>
+    const updated = await leaveTypeService.updateLeaveType(id, body)
+    res.json(updated)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -100,16 +100,16 @@ export async function deleteLeaveType(
   next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
+    const id = Number(req.params.id)
     if (Number.isNaN(id)) {
-      res.status(400).json({ message: "id must be a number." });
-      return;
+      res.status(400).json({ message: 'id must be a number.' })
+      return
     }
 
-    await leaveTypeService.deleteLeaveType(id);
-    res.status(204).send();
+    await leaveTypeService.deleteLeaveType(id)
+    res.status(204).send()
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -123,9 +123,9 @@ export function handleLeaveTypeError(
   res: Response,
   next: NextFunction
 ): void {
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({ message: err.message });
-    return;
+  if (err instanceof leaveTypeService.AppError) {
+    res.status(err.statusCode).json({ message: err.message })
+    return
   }
-  next(err);
+  next(err)
 }

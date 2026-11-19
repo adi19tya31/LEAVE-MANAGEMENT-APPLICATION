@@ -1,35 +1,46 @@
-import { Request, Response, NextFunction } from "express";
-import compOffModel from "../models/compOffModel";
-import employeeModel from "../models/employeeModel";
-import pool from "../config/db";
-import { sendNotification } from "../services/notificationServices";
-import * as compoffServices from "../services/compoffServices";
-//import { addCompOffBalance } from "../models/compoffBalancesModel";
+import { Request, Response, NextFunction } from 'express'
+import {compOffModel,employeeModel} from '../models'
+import pool from '../config/db'
+import { sendNotification } from '../services'
+import * as compoffServices from '../services'
+
 
 function validDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime())
+  )
 }
 
-export async function applyCompOff(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function applyCompOff(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const { workDate, reason } = req.body as { workDate?: string; reason?: string };
+    const { workDate, reason } = req.body as {
+      workDate?: string
+      reason?: string
+    }
     if (!workDate || !reason?.trim()) {
-      res.status(400).json({ error: "workDate and reason are required." });
-      return;
+      res.status(400).json({ error: 'workDate and reason are required.' })
+      return
     }
     if (!validDate(workDate)) {
-      res.status(400).json({ error: "workDate must be a valid date in YYYY-MM-DD format." });
-      return;
+      res
+        .status(400)
+        .json({ error: 'workDate must be a valid date in YYYY-MM-DD format.' })
+      return
     }
 
-    const employee = await employeeModel.findById(req.user!.id);
+    const employee = await employeeModel.findById(req.user!.id)
     if (!employee) {
-      res.status(404).json({ error: "Employee not found." });
-      return;
+      res.status(404).json({ error: 'Employee not found.' })
+      return
     }
     if (!employee.reporting_to) {
-      res.status(422).json({ error: "No manager found for this employee." });
-      return;
+      res.status(422).json({ error: 'No manager found for this employee.' })
+      return
     }
 
     const created = await compOffModel.create({
@@ -37,147 +48,172 @@ export async function applyCompOff(req: Request, res: Response, next: NextFuncti
       workDate,
       reason: reason.trim(),
       approverId: employee.reporting_to,
-    });
+    })
 
     const recipientIds = new Set([
       employee.reporting_to,
       ...(await employeeModel.findOwnerIds()),
-    ]);
+    ])
 
     await Promise.all(
       [...recipientIds].map((recipientId) =>
         sendNotification(
           recipientId,
-          "New Comp-Off Request",
+          'New Comp-Off Request',
           `${employee.name} has submitted a comp-off request for ${workDate}.`,
-          "COMPOFF_APPLIED",
-          created?.id,
-        ),
-      ),
-    );
+          'COMPOFF_APPLIED',
+          created?.id
+        )
+      )
+    )
 
-    res.status(201).json(created);
+    res.status(201).json(created)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
-export async function myCompOffHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function myCompOffHistory(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    res.json(await compOffModel.findByEmployee(req.user!.id));
+    res.json(await compOffModel.findByEmployee(req.user!.id))
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
 export async function cancelCompOffRequest(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const compOffId = Number(req.params.id);
+    const compOffId = Number(req.params.id)
 
     if (!Number.isInteger(compOffId) || compOffId <= 0) {
-      res.status(400).json({ error: "Invalid Comp-Off request ID." });
-      return;
+      res.status(400).json({ error: 'Invalid Comp-Off request ID.' })
+      return
     }
 
     const request = await compoffServices.cancelCompOffRequest(
       compOffId,
-      req.user!.id,
-    );
+      req.user!.id
+    )
 
     res.json({
-      message: "Comp-Off request cancelled successfully.",
+      message: 'Comp-Off request cancelled successfully.',
       request,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
-export async function pendingCompOffs(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function pendingCompOffs(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    res.json(await compOffModel.findPendingForApprover(req.user!.id));
+    res.json(await compOffModel.findPendingForApprover(req.user!.id))
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
-export async function compOffTeamHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function compOffTeamHistory(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const role = req.user!.role;
-    if (role === "owner") {
-      res.json(await compOffModel.findAllHistory());
-      return;
+    const role = req.user!.role
+    if (role === 'owner') {
+      res.json(await compOffModel.findAllHistory())
+      return
     }
-    res.json(await compOffModel.findTeamHistory(req.user!.id));
+    res.json(await compOffModel.findTeamHistory(req.user!.id))
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
-export async function decideCompOff(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function decideCompOff(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const { action, remarks } = req.body as { action?: "approved" | "rejected"; remarks?: string };
-    if (action !== "approved" && action !== "rejected") {
-      res.status(400).json({ error: "action must be 'approved' or 'rejected'." });
-      return;
+    const { action, remarks } = req.body as {
+      action?: 'approved' | 'rejected'
+      remarks?: string
     }
-    const existing = await compOffModel.findById(Number(req.params.id));
+    if (action !== 'approved' && action !== 'rejected') {
+      res
+        .status(400)
+        .json({ error: "action must be 'approved' or 'rejected'." })
+      return
+    }
+    const existing = await compOffModel.findById(Number(req.params.id))
     if (!existing) {
-      res.status(404).json({ error: "Comp-Off request not found." });
-      return;
+      res.status(404).json({ error: 'Comp-Off request not found.' })
+      return
     }
     if (existing.approver_id !== req.user!.id) {
-      res.status(403).json({ error: "You are not the assigned approver for this request." });
-      return;
+      res
+        .status(403)
+        .json({ error: 'You are not the assigned approver for this request.' })
+      return
     }
-    if (existing.status !== "pending") {
-      res.status(409).json({ error: `This request is already ${existing.status}.` });
-      return;
+    if (existing.status !== 'pending') {
+      res
+        .status(409)
+        .json({ error: `This request is already ${existing.status}.` })
+      return
     }
 
-    const connection = await pool.getConnection();
+    const connection = await pool.getConnection()
     try {
-      await connection.beginTransaction();
+      await connection.beginTransaction()
       await compOffModel.updateDecision(
         existing.id,
         req.user!.id,
         action,
         remarks?.trim() || null,
-        connection,
-      );
-      await connection.commit();
+        connection
+      )
+      await connection.commit()
 
-      const approver = await employeeModel.findById(req.user!.id);
+      const approver = await employeeModel.findById(req.user!.id)
       const notificationTitle =
-        action === "approved"
-          ? "Comp-Off Request Approved"
-          : "Comp-Off Request Rejected";
+        action === 'approved'
+          ? 'Comp-Off Request Approved'
+          : 'Comp-Off Request Rejected'
       const notificationMessage =
-        action === "approved"
-          ? `Your comp-off request has been approved by ${approver?.name || "your manager"}.`
-          : `Your comp-off request has been rejected by ${approver?.name || "your manager"}.`;
+        action === 'approved'
+          ? `Your comp-off request has been approved by ${approver?.name || 'your manager'}.`
+          : `Your comp-off request has been rejected by ${approver?.name || 'your manager'}.`
 
       await sendNotification(
         existing.employee_id,
         notificationTitle,
         notificationMessage,
-        action === "approved" ? "COMPOFF_APPROVED" : "COMPOFF_REJECTED",
-        existing.id,
-      );
+        action === 'approved' ? 'COMPOFF_APPROVED' : 'COMPOFF_REJECTED',
+        existing.id
+      )
 
-      res.json(await compOffModel.findById(existing.id));
+      res.json(await compOffModel.findById(existing.id))
     } catch (err) {
-      await connection.rollback();
-      throw err;
+      await connection.rollback()
+      throw err
     } finally {
-      connection.release();
+      connection.release()
     }
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -185,46 +221,44 @@ export async function decideCompOff(req: Request, res: Response, next: NextFunct
 export async function markCompOffAsWorked(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const compOffId = Number(req.params.id);
+    const compOffId = Number(req.params.id)
 
     if (!Number.isInteger(compOffId) || compOffId <= 0) {
       res.status(400).json({
-        error: "Invalid Comp-Off request ID.",
-      });
-      return;
+        error: 'Invalid Comp-Off request ID.',
+      })
+      return
     }
 
     const result = await compoffServices.markCompOffAsWorked(
       compOffId,
-      req.user!.id,
-    );
+      req.user!.id
+    )
 
     res.json({
-      message: "Comp-Off marked as worked successfully.",
+      message: 'Comp-Off marked as worked successfully.',
       data: result,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
-//compoff Balance logic 
+//compoff Balance logic
 // get current employee's Comp-Off balance
 export async function myCompOffBalance(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const balance = await compoffServices.getMyCompOffBalance(
-      req.user!.id,
-    );
+    const balance = await compoffServices.getMyCompOffBalance(req.user!.id)
 
-    res.json(balance);
+    res.json(balance)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }

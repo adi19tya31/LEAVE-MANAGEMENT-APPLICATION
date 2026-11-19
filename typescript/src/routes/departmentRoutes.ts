@@ -1,5 +1,5 @@
-import { Router } from "express";
-import { requireAuth, requireRole } from "../middleware/authMiddleware";
+import { Router } from 'express'
+import { requireAuth, requireRole } from '../middleware/authMiddleware'
 import {
   listDepartments,
   createDepartment,
@@ -8,25 +8,38 @@ import {
   deactivateDepartment,
   reactivateDepartment,
   deleteDepartment,
-} from "../controllers/departmentController";
+} from '../controllers'
 
-const router = Router();
+const router = Router()
 
-router.use(requireAuth); // every department route requires a logged-in employee
+router.use(requireAuth) // every department route requires a logged-in employee
 
-router.get("/departments", requireRole("owner", "manager"), listDepartments);
+router.get('/departments', requireRole('owner', 'manager'), listDepartments)
 
-router.post("/departments", requireRole("owner", "manager"), createDepartment);
+router.post('/departments', requireRole('owner', 'manager'), createDepartment)
 
-  
-router.patch("/departments/:id", requireRole("owner", "manager"), renameDepartment);
+router.patch(
+  '/departments/:id',
+  requireRole('owner', 'manager'),
+  renameDepartment
+)
 
+router.patch(
+  '/departments/:id/manager',
+  requireRole('owner'),
+  setDepartmentManager
+)
 
-router.patch("/departments/:id/manager", requireRole("owner"), setDepartmentManager);
+router.patch(
+  '/departments/:id/deactivate',
+  requireRole('owner', 'manager'),
+  deactivateDepartment
+)
+router.patch(
+  '/departments/:id/reactivate',
+  requireRole('owner', 'manager'),
+  reactivateDepartment
+)
+router.delete('/departments/:id', requireRole('owner'), deleteDepartment)
 
-
-router.patch("/departments/:id/deactivate", requireRole("owner", "manager"), deactivateDepartment);
-router.patch("/departments/:id/reactivate", requireRole("owner", "manager"), reactivateDepartment);
-router.delete("/departments/:id", requireRole("owner"), deleteDepartment);
-
-export default router;
+export default router

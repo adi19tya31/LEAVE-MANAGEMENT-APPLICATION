@@ -1,33 +1,30 @@
-import { Request, Response, NextFunction } from "express";
-import leaveBalanceModel from "../models/leaveBalanceModel";
-import leaveTypeModel from "../models/leaveTypeModel";
-import { getCompOffBalance } from "../models/compoffBalancesModel";
-import { currentYear } from "../utils/dateUtils";
+import { Request, Response, NextFunction } from 'express'
+import {leaveBalanceModel,leaveTypeModel} from '../models'
+import { getCompOffBalance } from '../models'
+import { currentYear } from '../utils/dateUtils'
 
 function isCompOffLeaveType(name: string): boolean {
-  return /^comp[\s_-]*off(?:[\s_-]+leave)?$/i.test(name.trim());
+  return /^comp[\s_-]*off(?:[\s_-]+leave)?$/i.test(name.trim())
 }
 
 // GET /api/leave-balances/me — feeds the balance chips at the top of the form
 export async function myBalances(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const year = Number(req.query.year) || currentYear();
+    const year = Number(req.query.year) || currentYear()
     const [balances, leaveTypes, compOffBalance] = await Promise.all([
       leaveBalanceModel.listForEmployee(req.user!.id, year),
       leaveTypeModel.findAll(),
       getCompOffBalance(req.user!.id, year),
-    ]);
-    const compOffType = leaveTypes.find((type) =>
-      isCompOffLeaveType(type.name),
-    );
+    ])
+    const compOffType = leaveTypes.find((type) => isCompOffLeaveType(type.name))
 
     if (!compOffType) {
-      res.json(balances);
-      return;
+      res.json(balances)
+      return
     }
 
     res.json([
@@ -42,9 +39,9 @@ export async function myBalances(
         leave_type_name: compOffType.name,
         max_days_per_year: compOffType.max_days_per_year,
       },
-    ]);
+    ])
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -52,12 +49,12 @@ export async function myBalances(
 export async function listLeaveTypes(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const types = await leaveTypeModel.findAll();
-    res.json(types);
+    const types = await leaveTypeModel.findAll()
+    res.json(types)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
