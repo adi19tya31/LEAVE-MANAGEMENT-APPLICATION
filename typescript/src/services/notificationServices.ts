@@ -1,68 +1,51 @@
-import {
-  createNotification,
-  getNotifications,
-  getUnreadCount,
-  markAsRead,
-  markAllAsRead,
-  deleteNotification,
-  deleteAllNotifications,
-} from "../models/notificationModel";
+import { notificationModel } from '../models'
 
 export async function sendNotification(
   recipientId: number,
   title: string,
   message: string,
   type: string,
-  referenceId?: number,
+  referenceId?: number
 ): Promise<void> {
-  await createNotification({
+  await notificationModel.createNotification({
     recipientId,
     title,
     message,
     type,
     referenceId,
-  });
+  })
 }
 
 export async function getUserNotifications(recipientId: number) {
-  return await getNotifications(recipientId);
+  return await notificationModel.getNotifications(recipientId)
 }
 
 export async function getUserUnreadCount(recipientId: number) {
-  return await getUnreadCount(recipientId);
+  return await notificationModel.getUnreadCount(recipientId)
 }
 
 export async function readNotification(
   notificationId: number,
-  recipientId: number,
+  recipientId: number
 ): Promise<void> {
-  await markAsRead(notificationId, recipientId);
+  await notificationModel.markAsRead(notificationId, recipientId)
 }
 
 export async function readAllNotifications(recipientId: number): Promise<void> {
-  await markAllAsRead(recipientId);
+  await notificationModel.markAllAsRead(recipientId)
 }
 
 export async function removeNotification(
   notificationId: number,
-  recipientId: number,
+  recipientId: number
 ): Promise<void> {
-  await deleteNotification(notificationId, recipientId);
+  await notificationModel.deleteNotification(notificationId, recipientId)
 }
 
 export async function removeAllNotifications(
-  recipientId: number,
+  recipientId: number
 ): Promise<void> {
-  await deleteAllNotifications(recipientId);
+  await notificationModel.deleteAllNotifications(recipientId)
 }
 
-export default {
-  sendNotification,
-  getUnreadCount,
-  getUserNotifications,
-  getUserUnreadCount,
-  readAllNotifications,
-  readNotification,
-  removeAllNotifications,
-  removeNotification,
-};
+

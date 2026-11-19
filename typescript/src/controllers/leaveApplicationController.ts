@@ -1,26 +1,26 @@
-import { Request, Response, NextFunction } from "express";
-import * as leaveService from "../services/leaveService";
-import leaveApplicationModel from "../models/leaveApplicationModel";
-import leaveTypeModel from "../models/leaveTypeModel";
+import { Request, Response, NextFunction } from 'express'
+import * as leaveService from '../services'
+import {leaveApplicationModel,leaveTypeModel} from '../models'
+
 interface SubmitApplicationBody {
-  leaveTypeId: number;
+  leaveTypeId: number
 
-  startDate: string;
+  startDate: string
 
-  endDate: string;
+  endDate: string
 
-  startDayType: "FULL_DAY" | "FIRST_HALF" | "SECOND_HALF";
+  startDayType: 'FULL_DAY' | 'FIRST_HALF' | 'SECOND_HALF'
 
-  endDayType: "FULL_DAY" | "FIRST_HALF" | "SECOND_HALF";
+  endDayType: 'FULL_DAY' | 'FIRST_HALF' | 'SECOND_HALF'
 
-  reason: string;
+  reason: string
 }
 
 // POST /api/leave-applications — employee submits the form
 export async function submitApplication(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const {
@@ -30,8 +30,8 @@ export async function submitApplication(
       startDayType,
       endDayType,
       reason,
-    } = req.body as SubmitApplicationBody;
-    const employeeId = req.user!.id; // taken from the JWT, never trusted from the body
+    } = req.body as SubmitApplicationBody
+    const employeeId = req.user!.id // taken from the JWT, never trusted from the body
 
     const { application, remainingLeaves } = await leaveService.applyForLeave({
       employeeId,
@@ -47,7 +47,7 @@ export async function submitApplication(
       endDayType,
 
       reason,
-    });
+    })
 
     // This is the shape the React form's "result" panel expects
     res.status(201).json({
@@ -58,9 +58,9 @@ export async function submitApplication(
       remainingLeaves,
       submittedOn: application.applied_on,
       approverId: application.approver_id,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -68,13 +68,13 @@ export async function submitApplication(
 export async function myApplications(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const rows = await leaveApplicationModel.findByEmployee(req.user!.id);
-    res.json(rows);
+    const rows = await leaveApplicationModel.findByEmployee(req.user!.id)
+    res.json(rows)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -82,20 +82,20 @@ export async function myApplications(
 export async function getStatus(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const result = await leaveService.getApplicationStatus(
       Number(req.params.id),
-      req.user!.id,
-    );
+      req.user!.id
+    )
     res.json({
       status: result.application.status,
       applicationId: result.application.id,
       remainingLeaves: result.remainingLeaves,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -103,16 +103,16 @@ export async function getStatus(
 export async function teamHistory(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const rows =
-      req.user!.role === "owner"
+      req.user!.role === 'owner'
         ? await leaveApplicationModel.findAllHistory()
-        : await leaveApplicationModel.findTeamHistory(req.user!.id);
-    res.json(rows);
+        : await leaveApplicationModel.findTeamHistory(req.user!.id)
+    res.json(rows)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -120,13 +120,13 @@ export async function teamHistory(
 export async function pendingForApprover(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const rows = await leaveService.getPendingApprovals(req.user!.id);
-    res.json(rows);
+    const rows = await leaveService.getPendingApprovals(req.user!.id)
+    res.json(rows)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -134,17 +134,17 @@ export async function pendingForApprover(
 export async function calendarLeaves(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const rows =
-      req.user!.role === "owner"
+      req.user!.role === 'owner'
         ? await leaveApplicationModel.findForCalendar()
-        : await leaveApplicationModel.findForCalendar(req.user!.id);
+        : await leaveApplicationModel.findForCalendar(req.user!.id)
 
-    res.json(rows);
+    res.json(rows)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -152,22 +152,22 @@ export async function calendarLeaves(
 export async function decide(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const { action, remarks } = req.body as {
-      action: "approved" | "rejected";
-      remarks?: string;
-    };
+      action: 'approved' | 'rejected'
+      remarks?: string
+    }
     const updated = await leaveService.decideApplication({
       applicationId: Number(req.params.id),
       approverId: req.user!.id,
       action,
       remarks,
-    });
-    res.json(updated);
+    })
+    res.json(updated)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -176,28 +176,28 @@ export async function decide(
 export async function cancelApplication(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const applicationId = Number(req.params.id);
+    const applicationId = Number(req.params.id)
 
     if (!Number.isInteger(applicationId) || applicationId <= 0) {
       res.status(400).json({
-        error: "Invalid leave application ID.",
-      });
-      return;
+        error: 'Invalid leave application ID.',
+      })
+      return
     }
 
     const updated = await leaveService.cancelLeaveApplication(
       applicationId,
-      req.user!.id,
-    );
+      req.user!.id
+    )
 
     res.json({
-      message: "Leave application cancelled successfully.",
+      message: 'Leave application cancelled successfully.',
       application: updated,
-    });
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
 }

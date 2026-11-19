@@ -24,36 +24,6 @@ import * as notificationApi from "../api/notificationApi";
 export default function AppShell() {
   const { user, logout, token, loading } = useAuth();
 
-if (loading) {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      Loading...
-    </div>
-  );
-}
-
-if (!user) {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      Unable to load user information.
-    </div>
-  );
-}
-
   const navigate = useNavigate();
 
   const [unreadCount, setUnreadCount] = useState(0);
@@ -64,8 +34,48 @@ if (!user) {
 
   const notificationRef = useRef(null);
 
-  const managerOrOwner = user.role === "manager" || user.role === "owner";
+  const managerOrOwner = user?.role === "manager" || user?.role === "owner";
 
+
+// if (loading) {
+//   return (
+//     <div
+//       style={{
+//         minHeight: "100vh",
+//         display: "flex",
+//         alignItems: "center",
+//         justifyContent: "center",
+//       }}
+//     >
+//       Loading...
+//     </div>
+//   );
+// }
+
+// if (!user) {
+//   return (
+//     <div
+//       style={{
+//         minHeight: "100vh",
+//         display: "flex",
+//         alignItems: "center",
+//         justifyContent: "center",
+//       }}
+//     >
+//       Unable to load user information.
+//     </div>
+//   );
+// }
+
+  // const navigate = useNavigate();
+
+  // const [unreadCount, setUnreadCount] = useState(0);
+
+  // const [notifications, setNotifications] = useState([]);
+
+  // const [showNotifications, setShowNotifications] = useState(false);
+
+  
   // ================================
   // LOAD UNREAD COUNT
   // ================================
@@ -142,6 +152,38 @@ if (!user) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+//conditional returning
+  if (loading) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      Loading...
+    </div>
+  );
+}
+
+if (!user) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      Unable to load user information.
+    </div>
+  );
+}
+
 
   // ================================
   // TOGGLE NOTIFICATIONS

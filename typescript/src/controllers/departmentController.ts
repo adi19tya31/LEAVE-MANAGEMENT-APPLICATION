@@ -1,18 +1,17 @@
-import { Request, Response, NextFunction } from "express";
-import departmentModel from "../models/departmentModel";
-import employeeModel from "../models/employeeModel";
+import { Request, Response, NextFunction } from 'express'
+import {departmentModel,employeeModel} from '../models'
 
 // GET /api/departments — Owner ✅  Manager ✅  Employee ❌
 export async function listDepartments(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const departments = await departmentModel.findAll();
-    res.json(departments);
+    const departments = await departmentModel.findAll()
+    res.json(departments)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -20,25 +19,25 @@ export async function listDepartments(
 export async function createDepartment(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const { name } = req.body as { name?: string };
+    const { name } = req.body as { name?: string }
     if (!name || !name.trim()) {
-      res.status(400).json({ error: "name is required." });
-      return;
+      res.status(400).json({ error: 'name is required.' })
+      return
     }
 
-    const existing = await departmentModel.findByName(name);
+    const existing = await departmentModel.findByName(name)
     if (existing) {
-      res.status(409).json({ error: `Department '${name}' already exists.` });
-      return;
+      res.status(409).json({ error: `Department '${name}' already exists.` })
+      return
     }
 
-    const department = await departmentModel.create(name.trim());
-    res.status(201).json(department);
+    const department = await departmentModel.create(name.trim())
+    res.status(201).json(department)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -46,26 +45,26 @@ export async function createDepartment(
 export async function renameDepartment(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
-    const { name } = req.body as { name?: string };
+    const id = Number(req.params.id)
+    const { name } = req.body as { name?: string }
     if (!name || !name.trim()) {
-      res.status(400).json({ error: "name is required." });
-      return;
+      res.status(400).json({ error: 'name is required.' })
+      return
     }
 
-    const department = await departmentModel.findById(id);
+    const department = await departmentModel.findById(id)
     if (!department) {
-      res.status(404).json({ error: "Department not found." });
-      return;
+      res.status(404).json({ error: 'Department not found.' })
+      return
     }
 
-    const updated = await departmentModel.updateName(id, name.trim());
-    res.json(updated);
+    const updated = await departmentModel.updateName(id, name.trim())
+    res.json(updated)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -73,34 +72,34 @@ export async function renameDepartment(
 export async function setDepartmentManager(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
-    const { managerId } = req.body as { managerId?: number };
+    const id = Number(req.params.id)
+    const { managerId } = req.body as { managerId?: number }
     if (!managerId) {
-      res.status(400).json({ error: "managerId is required." });
-      return;
+      res.status(400).json({ error: 'managerId is required.' })
+      return
     }
 
-    const department = await departmentModel.findById(id);
+    const department = await departmentModel.findById(id)
     if (!department) {
-      res.status(404).json({ error: "Department not found." });
-      return;
+      res.status(404).json({ error: 'Department not found.' })
+      return
     }
 
-    const manager = await employeeModel.findById(managerId);
+    const manager = await employeeModel.findById(managerId)
     if (!manager) {
       res
         .status(400)
-        .json({ error: `No employee found with Emp_id = ${managerId}.` });
-      return;
+        .json({ error: `No employee found with Emp_id = ${managerId}.` })
+      return
     }
 
-    const updated = await departmentModel.setManager(id, managerId);
-    res.json(updated);
+    const updated = await departmentModel.setManager(id, managerId)
+    res.json(updated)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -109,38 +108,38 @@ export async function setDepartmentManager(
 export async function deactivateDepartment(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
-    const department = await departmentModel.findById(id);
+    const id = Number(req.params.id)
+    const department = await departmentModel.findById(id)
     if (!department) {
-      res.status(404).json({ error: "Department not found." });
-      return;
+      res.status(404).json({ error: 'Department not found.' })
+      return
     }
-    const updated = await departmentModel.deactivate(id);
-    res.json(updated);
+    const updated = await departmentModel.deactivate(id)
+    res.json(updated)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
 export async function reactivateDepartment(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
-    const department = await departmentModel.findById(id);
+    const id = Number(req.params.id)
+    const department = await departmentModel.findById(id)
     if (!department) {
-      res.status(404).json({ error: "Department not found." });
-      return;
+      res.status(404).json({ error: 'Department not found.' })
+      return
     }
-    const updated = await departmentModel.reactivate(id);
-    res.json(updated);
+    const updated = await departmentModel.reactivate(id)
+    res.json(updated)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -148,18 +147,18 @@ export async function reactivateDepartment(
 export async function deleteDepartment(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const id = Number(req.params.id);
-    const department = await departmentModel.findById(id);
+    const id = Number(req.params.id)
+    const department = await departmentModel.findById(id)
     if (!department) {
-      res.status(404).json({ error: "Department not found." });
-      return;
+      res.status(404).json({ error: 'Department not found.' })
+      return
     }
-    await departmentModel.remove(id);
-    res.status(204).send();
+    await departmentModel.remove(id)
+    res.status(204).send()
   } catch (err) {
-    next(err);
+    next(err)
   }
 }

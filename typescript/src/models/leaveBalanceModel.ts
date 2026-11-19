@@ -1,6 +1,11 @@
-import pool from "../config/db";
-import { Pool, RowDataPacket, ResultSetHeader, PoolConnection } from "mysql2/promise";
-import { LeaveBalance, LeaveBalanceWithType } from "../types";
+import pool from '../config/db'
+import {
+  Pool,
+  RowDataPacket,
+  ResultSetHeader,
+  PoolConnection,
+} from 'mysql2/promise'
+import { LeaveBalance, LeaveBalanceWithType } from '../types'
 
 async function getBalance(
   employeeId: number,
@@ -8,10 +13,10 @@ async function getBalance(
   year: number
 ): Promise<LeaveBalance | null> {
   const [rows] = await pool.query<(LeaveBalance & RowDataPacket)[]>(
-    "SELECT * FROM leave_balances WHERE employee_id = ? AND leave_type_id = ? AND year = ?",
+    'SELECT * FROM leave_balances WHERE employee_id = ? AND leave_type_id = ? AND year = ?',
     [employeeId, leaveTypeId, year]
-  );
-  return rows[0] ?? null;
+  )
+  return rows[0] ?? null
 }
 
 async function listForEmployee(
@@ -25,29 +30,29 @@ async function listForEmployee(
      JOIN leave_types lt ON lt.id = lb.leave_type_id
      WHERE lb.employee_id = ? AND lb.year = ?`,
     [employeeId, year]
-  );
-  return rows;
+  )
+  return rows
 }
 
 // Creates a starting balance row — e.g. when a new employee joins,
 // or a new leave type is rolled out and needs a row per existing employee.
 async function create(input: {
-  employeeId: number;
-  leaveTypeId: number;
-  year: number;
-  allocatedDays: number;
+  employeeId: number
+  leaveTypeId: number
+  year: number
+  allocatedDays: number
 }): Promise<LeaveBalance> {
-  const { employeeId, leaveTypeId, year, allocatedDays } = input;
+  const { employeeId, leaveTypeId, year, allocatedDays } = input
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO leave_balances (employee_id, leave_type_id, year, allocated_days, used_days)
      VALUES (?, ?, ?, ?, 0)`,
     [employeeId, leaveTypeId, year, allocatedDays]
-  );
+  )
   const [rows] = await pool.query<(LeaveBalance & RowDataPacket)[]>(
-    "SELECT * FROM leave_balances WHERE id = ?",
+    'SELECT * FROM leave_balances WHERE id = ?',
     [result.insertId]
-  );
-  return rows[0];
+  )
+  return rows[0]
 }
 
 // Called only when an application is APPROVED, never at submission time —
@@ -62,9 +67,9 @@ async function incrementUsedDays(
   connection: Pool | PoolConnection = pool
 ): Promise<void> {
   await connection.query(
-    "UPDATE leave_balances SET used_days = used_days + ? WHERE employee_id = ? AND leave_type_id = ? AND year = ?",
+    'UPDATE leave_balances SET used_days = used_days + ? WHERE employee_id = ? AND leave_type_id = ? AND year = ?',
     [days, employeeId, leaveTypeId, year]
-  );
+  )
 }
 
 export async function refundLeaveBalance(
@@ -72,7 +77,7 @@ export async function refundLeaveBalance(
   leaveTypeId: number,
   year: number,
   days: number,
-  connection: Pool | PoolConnection = pool,
+  connection: Pool | PoolConnection = pool
 ): Promise<boolean> {
   const [result]: any = await connection.execute(
     `
@@ -83,10 +88,16 @@ export async function refundLeaveBalance(
       AND year = ?
       AND used_days >= ?
     `,
-    [days, employeeId, leaveTypeId, year, days],
-  );
+    [days, employeeId, leaveTypeId, year, days]
+  )
 
-  return result.affectedRows > 0;
+  return result.affectedRows > 0
 }
 
-export default { getBalance, listForEmployee, create, incrementUsedDays , refundLeaveBalance };
+export default {
+  getBalance,
+  listForEmployee,
+  create,
+  incrementUsedDays,
+  refundLeaveBalance,
+}

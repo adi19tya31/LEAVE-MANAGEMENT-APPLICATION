@@ -1,29 +1,29 @@
-import { Request, Response, NextFunction } from "express";
-import * as authService from "../services/authService";
+import { Request, Response, NextFunction } from 'express'
+import * as authService from '../services'
 
 export async function login(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const { email, password } = req.body as {
-      email?: string;
-      password?: string;
-    };
+      email?: string
+      password?: string
+    }
 
     if (!email || !password) {
       res.status(400).json({
-        error: "email and password are required.",
-      });
-      return;
+        error: 'email and password are required.',
+      })
+      return
     }
 
-    const result = await authService.login(email, password);
+    const result = await authService.login(email, password)
 
-    res.json(result);
+    res.json(result)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -32,28 +32,28 @@ export async function login(
 export async function forgotPassword(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     //   console.log("FORGOT PASSWORD ROUTE REACHED");
     // console.log("Request body:", req.body);
 
     const { email } = req.body as {
-      email?: string;
-    };
+      email?: string
+    }
 
     if (!email) {
       res.status(400).json({
-        error: "Email is required.",
-      });
-      return;
+        error: 'Email is required.',
+      })
+      return
     }
 
-    const result = await authService.forgotPassword(email);
+    const result = await authService.forgotPassword(email)
 
-    res.json(result);
+    res.json(result)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -62,27 +62,27 @@ export async function forgotPassword(
 export async function verifyResetOtp(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const { email, otp } = req.body as {
-      email?: string;
-      otp?: string;
-    };
+      email?: string
+      otp?: string
+    }
 
     if (!email || !otp) {
       res.status(400).json({
-        error: "Email and OTP are required.",
-      });
+        error: 'Email and OTP are required.',
+      })
 
-      return;
+      return
     }
 
-    const result = await authService.verifyResetOtp(email, otp);
+    const result = await authService.verifyResetOtp(email, otp)
 
-    res.json(result);
+    res.json(result)
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
 
@@ -91,31 +91,29 @@ export async function verifyResetOtp(
 export async function resetPassword(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
     const { resetToken, newPassword } = req.body as {
-      resetToken?: string;
-      newPassword?: string;
-    };
+      resetToken?: string
+      newPassword?: string
+    }
 
     if (!resetToken || !newPassword) {
       res.status(400).json({
-        error: "Reset token and new password are required.",
-      });
+        error: 'Reset token and new password are required.',
+      })
 
-      return;
+      return
     }
 
-    await authService.resetPassword(
-      resetToken,
-      newPassword,
-    );
+    await authService.resetPassword(resetToken, newPassword)
 
     res.json({
-      message: "Password reset successfully.",
-    });
+      message: 'Password reset successfully.',
+    })
   } catch (err) {
-    next(err);
+    next(err)
   }
 }
+
