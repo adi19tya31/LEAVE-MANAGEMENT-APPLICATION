@@ -31,7 +31,7 @@ export async function submitApplication(
       endDayType,
       reason,
     } = req.body as SubmitApplicationBody
-    const employeeId = req.user!.id // taken from the JWT, never trusted from the body
+    const employeeId = req.user!.centralEmployeeId
 
     const { application, remainingLeaves } = await leaveService.applyForLeave({
       employeeId,
@@ -47,6 +47,11 @@ export async function submitApplication(
       endDayType,
 
       reason,
+
+      reportingManagerEmployeeId:
+        req.user!.reportingManagerEmployeeId ?? null,
+
+      employeeName: req.user!.name,
     })
 
     // This is the shape the React form's "result" panel expects
@@ -71,7 +76,9 @@ export async function myApplications(
   next: NextFunction
 ): Promise<void> {
   try {
-    const rows = await leaveApplicationModel.findByEmployee(req.user!.id)
+    const rows = await leaveApplicationModel.findByEmployee(
+      req.user!.centralEmployeeId
+    )
     res.json(rows)
   } catch (err) {
     next(err)
@@ -87,7 +94,7 @@ export async function getStatus(
   try {
     const result = await leaveService.getApplicationStatus(
       Number(req.params.id),
-      req.user!.id
+      req.user!.centralEmployeeId
     )
     res.json({
       status: result.application.status,
@@ -107,9 +114,11 @@ export async function teamHistory(
 ): Promise<void> {
   try {
     const rows =
-      req.user!.role === 'owner'
+      req.user!.applicationRoles?.includes('owner')
         ? await leaveApplicationModel.findAllHistory()
-        : await leaveApplicationModel.findTeamHistory(req.user!.id)
+        : await leaveApplicationModel.findTeamHistory(
+            req.user!.centralEmployeeId
+          )
     res.json(rows)
   } catch (err) {
     next(err)
@@ -123,7 +132,9 @@ export async function pendingForApprover(
   next: NextFunction
 ): Promise<void> {
   try {
-    const rows = await leaveService.getPendingApprovals(req.user!.id)
+    const rows = await leaveService.getPendingApprovals(
+      req.user!.centralEmployeeId
+    )
     res.json(rows)
   } catch (err) {
     next(err)
@@ -138,9 +149,11 @@ export async function calendarLeaves(
 ): Promise<void> {
   try {
     const rows =
-      req.user!.role === 'owner'
+      req.user!.applicationRoles?.includes('owner')
         ? await leaveApplicationModel.findForCalendar()
-        : await leaveApplicationModel.findForCalendar(req.user!.id)
+        : await leaveApplicationModel.findForCalendar(
+            req.user!.centralEmployeeId
+          )
 
     res.json(rows)
   } catch (err) {
@@ -161,7 +174,7 @@ export async function decide(
     }
     const updated = await leaveService.decideApplication({
       applicationId: Number(req.params.id),
-      approverId: req.user!.id,
+      approverId: req.user!.centralEmployeeId,
       action,
       remarks,
     })
@@ -190,7 +203,7 @@ export async function cancelApplication(
 
     const updated = await leaveService.cancelLeaveApplication(
       applicationId,
-      req.user!.id
+      req.user!.centralEmployeeId
     )
 
     res.json({

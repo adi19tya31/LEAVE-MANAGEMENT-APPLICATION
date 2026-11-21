@@ -14,9 +14,6 @@ keycloak
     pkceMethod: "S256",
   })
   .then((authenticated) => {
-    console.log("KEYCLOAK AUTHENTICATED:", authenticated);
-    console.log("KEYCLOAK TOKEN:", keycloak.token);
-
     if (!authenticated) {
       console.error("User is not authenticated");
       return;

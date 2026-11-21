@@ -12,12 +12,12 @@ router.use(requireAuth)
 router.get('/public-holidays', listPublicHolidays)
 router.post(
   '/public-holidays',
-  requireRole('owner', 'manager', 'ceo'),
+  requireRole('owner', 'manager'),
   createPublicHoliday
 )
 router.delete(
   '/public-holidays/:id',
-  requireRole('owner', 'manager', 'ceo'),
+  requireRole('owner', 'manager'),
   deletePublicHoliday
 )
 
@@ -25,12 +25,12 @@ router.delete(
 router.get('/holidays', listPublicHolidays)
 router.post(
   '/holidays',
-  requireRole('owner', 'manager', 'ceo'),
+  requireRole('owner', 'manager'),
   createPublicHoliday
 )
 router.delete(
   '/holidays/:id',
-  requireRole('owner', 'manager', 'ceo'),
+  requireRole('owner', 'manager'),
   deletePublicHoliday
 )
 

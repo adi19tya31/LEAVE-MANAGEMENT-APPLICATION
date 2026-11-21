@@ -78,12 +78,20 @@ export function AuthProvider({ children }) {
         }
       );
 
-      console.log(
-        "APPLICATION USER:",
-        data.user
-      );
+      // setUser(data.user);
+const authenticatedUser = data.user;
 
-      setUser(data.user);
+setUser({
+  ...authenticatedUser,
+
+  applicationRoles: Array.isArray(
+    authenticatedUser.applicationRoles
+  )
+    ? authenticatedUser.applicationRoles
+    : authenticatedUser.role
+      ? [authenticatedUser.role]
+      : [],
+});
 
     } catch (error) {
 

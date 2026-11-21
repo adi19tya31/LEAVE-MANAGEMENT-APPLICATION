@@ -8,7 +8,11 @@ export function ProtectedRoute() {
 
 export function RoleRoute({ roles }) {
   const { user } = useAuth();
-  return roles.includes(user?.role) ? (
+  const applicationRoles = user?.applicationRoles;
+  const isAuthorized = Array.isArray(applicationRoles)
+    ? roles.some((role) => applicationRoles.includes(role))
+    : roles.includes(user?.role);
+  return isAuthorized ? (
     <Outlet />
   ) : (
     <Navigate to="/apply" replace />

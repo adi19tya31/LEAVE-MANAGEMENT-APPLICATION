@@ -1,6 +1,6 @@
 # Leave Management Frontend
 
-A production-style React/Vite scaffold extracted from the original single-file frontend. It keeps the existing UI and backend endpoint contract while separating responsibilities into API modules, auth context, reusable UI, layouts, and pages.
+React/Vite frontend for Leave Management. Authentication uses the existing Keycloak SSO flow; the backend resolves the employee identity, application roles, and reporting manager through User Management.
 
 ## Structure
 
@@ -8,10 +8,8 @@ A production-style React/Vite scaffold extracted from the original single-file f
 src/
 ├── api/
 │   ├── client.js
-│   ├── authApi.js
 │   ├── leaveApi.js
-│   ├── employeeApi.js
-│   └── departmentApi.js
+│   └── notificationApi.js
 ├── components/
 │   ├── ProtectedRoute.jsx
 │   └── ui.jsx
@@ -20,11 +18,9 @@ src/
 ├── layouts/
 │   └── AppShell.jsx
 ├── pages/
-│   ├── LoginPage.jsx
 │   ├── ApplyLeavePage.jsx
 │   ├── MyApplicationsPage.jsx
-│   ├── ApprovalQueuePage.jsx
-│   └── RegisterEmployeePage.jsx
+│   └── ApprovalQueuePage.jsx
 ├── App.jsx
 ├── main.jsx
 └── index.css
@@ -32,9 +28,9 @@ src/
 
 ## Backend contract preserved
 
-The frontend calls the same routes used by the supplied backend:
+The frontend uses the central authenticated session and Leave Management business routes:
 
-- `POST /api/auth/login`
+- `GET /api/auth/me`
 - `GET /api/leave-types`
 - `GET /api/leave-balances/me`
 - `POST /api/leave-applications`
@@ -42,8 +38,7 @@ The frontend calls the same routes used by the supplied backend:
 - `GET /api/leave-applications/pending`
 - `PATCH /api/leave-applications/:id/decision`
 - `GET /api/leave-applications/:id/status`
-- `POST /api/employees`
-- Department endpoints are also isolated in `departmentApi.js` for future department-management pages.
+- Comp-Off, notification, and manager/owner business routes.
 - `GET /api/public-holidays` lists configured holidays.
 - `POST /api/public-holidays` creates a holiday with `{ "date": "YYYY-MM-DD", "name": "..." }`.
 - `DELETE /api/public-holidays/:id` removes a holiday.
@@ -61,15 +56,4 @@ The backend must calculate `total_days` and deduct balances using each date in t
 
 The current default backend URL is `http://localhost:5000`.
 
-## Department Management
-
-Managers and owners can access **Departments** from the sidebar. The page uses the existing backend department endpoints for:
-
-- listing departments
-- creating departments
-- renaming departments
-- deactivating/reactivating departments
-- owner-only manager assignment
-- owner-only permanent deletion
-
-The manager assignment field accepts an employee ID because the current backend exposes manager assignment as `PATCH /api/departments/:id/manager` with a numeric `managerId`.
+Employee, role, department, registration, and password management belong to User Management and Keycloak, not this frontend.

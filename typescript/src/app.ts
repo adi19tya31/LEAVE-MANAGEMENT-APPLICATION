@@ -4,8 +4,6 @@ import errorHandler from './middleware/errorHandler'
 import {
   authRoutes,
   compOffRoutes,
-  departmentRoutes,
-  employeeRoutes,
   leaveRoutes,
   leaveTypeRoutes,
   notificationRoutes,
@@ -24,8 +22,6 @@ app.use((req, res, next) => {
 app.get('/api/health', (req: Request, res: Response) => res.json({ ok: true }))
 
 app.use('/api/auth', authRoutes)
-app.use('/api', employeeRoutes)
-app.use('/api', departmentRoutes)
 app.use('/api', leaveRoutes)
 app.use('/api', publicHolidayRoutes)
 app.use('/api', compOffRoutes)

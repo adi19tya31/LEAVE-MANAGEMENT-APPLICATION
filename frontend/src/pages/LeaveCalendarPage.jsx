@@ -107,8 +107,6 @@ export default function LeaveCalendarPage() {
     new Date().toISOString().slice(0, 10),
   );
 
-  const [selectedDepartment, setSelectedDepartment] = useState("all");
-
   const [selectedLeaveType, setSelectedLeaveType] = useState("all");
 
   const [selectedEmployee, setSelectedEmployee] = useState("all");
@@ -138,12 +136,6 @@ export default function LeaveCalendarPage() {
   // FILTER OPTIONS
   // =========================
 
-  const departments = useMemo(() => {
-    return [
-      ...new Set(leaves.map((leave) => leave.department_name).filter(Boolean)),
-    ];
-  }, [leaves]);
-
   const leaveTypes = useMemo(() => {
     return [
       ...new Set(leaves.map((leave) => leave.leave_type_name).filter(Boolean)),
@@ -169,14 +161,6 @@ export default function LeaveCalendarPage() {
         return false;
       }
 
-      // Department filter
-      if (
-        selectedDepartment !== "all" &&
-        leave.department_name !== selectedDepartment
-      ) {
-        return false;
-      }
-
       // Leave type filter
       if (
         selectedLeaveType !== "all" &&
@@ -198,7 +182,6 @@ export default function LeaveCalendarPage() {
   }, [
     leaves,
     statusFilters,
-    selectedDepartment,
     selectedLeaveType,
     selectedEmployee,
   ]);
@@ -460,21 +443,6 @@ export default function LeaveCalendarPage() {
             {/* FILTERS */}
 
             <div className="calendar-filters">
-              {/* DEPARTMENT */}
-
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-              >
-                <option value="all">All Departments</option>
-
-                {departments.map((department) => (
-                  <option key={department} value={department}>
-                    {department}
-                  </option>
-                ))}
-              </select>
-
               {/* LEAVE TYPE */}
 
               <select

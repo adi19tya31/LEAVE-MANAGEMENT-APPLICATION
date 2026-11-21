@@ -27,9 +27,9 @@ async function listForApplication(
   const [rows] = await pool.query<
     (LeaveApprovalLog & { approver_name: string } & RowDataPacket)[]
   >(
-    `SELECT lal.*, e.name AS approver_name
+    `SELECT lal.*,
+            CONCAT('Employee #', lal.approver_id) AS approver_name
      FROM leave_approval_logs lal
-     JOIN employees e ON e.Emp_id = lal.approver_id
      WHERE lal.leave_application_id = ?
      ORDER BY lal.action_date ASC`,
     [leaveApplicationId]
