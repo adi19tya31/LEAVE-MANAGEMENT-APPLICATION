@@ -1,7 +1,5 @@
 export { default as authRoutes } from './authRoutes'
 export { default as leaveRoutes } from './leaveRoutes'
-export { default as employeeRoutes } from './employeeRoutes'
-export { default as departmentRoutes } from './departmentRoutes'
 export { default as publicHolidayRoutes } from './publicHolidayRoutes'
 export { default as compOffRoutes } from './compOffRoutes'
 export { default as notificationRoutes } from './notificationRoutes'

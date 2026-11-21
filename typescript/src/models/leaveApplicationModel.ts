@@ -105,15 +105,12 @@ async function findById(
 
         lt.name AS leave_type_name,
 
-        e.name AS applicant_name
+        CONCAT('Employee #', la.employee_id) AS applicant_name
 
       FROM leave_applications la
 
       JOIN leave_types lt
         ON lt.id = la.leave_type_id
-
-      JOIN employees e
-        ON e.Emp_id = la.employee_id
 
       WHERE la.id = ?
       `,
@@ -174,17 +171,14 @@ async function findTeamHistory(
 
         lt.name AS leave_type_name,
 
-        e.name AS applicant_name
+        CONCAT('Employee #', la.employee_id) AS applicant_name
 
       FROM leave_applications la
 
       JOIN leave_types lt
         ON lt.id = la.leave_type_id
 
-      JOIN employees e
-        ON e.Emp_id = la.employee_id
-
-      WHERE e.reporting_to = ?
+      WHERE la.approver_id = ?
 
       ORDER BY la.applied_on DESC
       `,
@@ -210,15 +204,12 @@ async function findAllHistory(): Promise<LeaveApplicationWithNames[]> {
 
         lt.name AS leave_type_name,
 
-        e.name AS applicant_name
+        CONCAT('Employee #', la.employee_id) AS applicant_name
 
       FROM leave_applications la
 
       JOIN leave_types lt
         ON lt.id = la.leave_type_id
-
-      JOIN employees e
-        ON e.Emp_id = la.employee_id
 
       ORDER BY la.applied_on DESC
       `
@@ -244,15 +235,12 @@ async function findPendingForApprover(
 
         lt.name AS leave_type_name,
 
-        e.name AS applicant_name
+        CONCAT('Employee #', la.employee_id) AS applicant_name
 
       FROM leave_applications la
 
       JOIN leave_types lt
         ON lt.id = la.leave_type_id
-
-      JOIN employees e
-        ON e.Emp_id = la.employee_id
 
       WHERE
         la.approver_id = ?
@@ -296,12 +284,10 @@ async function updateStatus(
     SELECT
       la.*,
       lt.name AS leave_type_name,
-      e.name AS applicant_name
+      CONCAT('Employee #', la.employee_id) AS applicant_name
     FROM leave_applications la
     JOIN leave_types lt
       ON lt.id = la.leave_type_id
-    JOIN employees e
-      ON e.Emp_id = la.employee_id
     WHERE la.id = ?
     `,
     [id]
@@ -339,12 +325,10 @@ async function cancel(
     SELECT
       la.*,
       lt.name AS leave_type_name,
-      e.name AS applicant_name
+      CONCAT('Employee #', la.employee_id) AS applicant_name
     FROM leave_applications la
     JOIN leave_types lt
       ON lt.id = la.leave_type_id
-    JOIN employees e
-      ON e.Emp_id = la.employee_id
     WHERE la.id = ?
     `,
     [id]
@@ -376,20 +360,12 @@ async function findForCalendar(
 
         lt.name AS leave_type_name,
 
-        e.name AS applicant_name,
-
-        d.name AS department_name
+        CONCAT('Employee #', la.employee_id) AS applicant_name
 
       FROM leave_applications la
 
       JOIN leave_types lt
         ON lt.id = la.leave_type_id
-
-      JOIN employees e
-        ON e.Emp_id = la.employee_id
-
-      LEFT JOIN departments d
-        ON d.id = e.Dept_id
 
       ${managerCondition}
 

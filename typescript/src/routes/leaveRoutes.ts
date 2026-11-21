@@ -45,7 +45,11 @@ router.get(
 )
 
 router.patch('/leave-applications/:id/cancel', cancelApplication)
-router.patch('/leave-applications/:id/decision', decide)
+router.patch(
+  '/leave-applications/:id/decision',
+  requireRole('manager', 'owner'),
+  decide
+)
 
 // shared — applicant or approver can poll status
 router.get('/leave-applications/:id/status', getStatus)

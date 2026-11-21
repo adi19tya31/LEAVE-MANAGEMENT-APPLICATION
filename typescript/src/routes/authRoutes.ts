@@ -1,22 +1,19 @@
 import { Router } from 'express'
 
-import {login,forgotPassword,verifyResetOtp, resetPassword,} from '../controllers'
 import { requireAuth } from '../middleware/authMiddleware'
+import { provisionBalancesWithoutBlockingAuthentication } from '../services/leaveBalanceProvisioningService'
 
 const router = Router()
 
-router.get('/me', requireAuth, (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
+  await provisionBalancesWithoutBlockingAuthentication(
+    req.user!.centralEmployeeId,
+    req.leaveManagementAccessGranted === true
+  )
+
   res.json({
     user: req.user,
   })
 })
-
-// PUBLIC ROUTES
-router.post('/login', login)
-router.post('/forgot-password', forgotPassword)
-
-router.post('/verify-reset-otp', verifyResetOtp)
-
-router.post('/reset-password', resetPassword)
 
 export default router

@@ -12,8 +12,8 @@ import {
   TextInput,
 } from "../components/ui";
 
-function isCompOffLeaveType(name) {
-  return /^comp[\s_-]*off(?:[\s_-]+leave)?$/i.test(name.trim());
+function getBalanceYear(startDate) {
+  return startDate ? Number(startDate.slice(0, 4)) : new Date().getFullYear();
 }
 
 export default function ApplyLeavePage() {
@@ -31,13 +31,14 @@ export default function ApplyLeavePage() {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const balanceYear = getBalanceYear(startDate);
 
   const loadData = useCallback(async () => {
     setLoadError("");
     try {
       const [types, bals] = await Promise.all([
         leaveApi.getLeaveTypes(token),
-        leaveApi.getMyBalances(token),
+        leaveApi.getMyBalances(token, balanceYear),
       ]);
       const configuredHolidays = await getPublicHolidays(token).catch(() => []);
       setLeaveTypes(types);
@@ -47,7 +48,7 @@ export default function ApplyLeavePage() {
     } catch (e) {
       setLoadError(e.message);
     }
-  }, [token]);
+  }, [token, balanceYear]);
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -64,6 +65,12 @@ export default function ApplyLeavePage() {
     setSubmitError("");
     if (chargeableDays === 0) {
       setSubmitError("The selected range contains no working days.");
+      return;
+    }
+    if (!selectedBalance) {
+      setSubmitError(
+        `No leave balance has been allocated for ${balanceYear}. Contact a Leave Management owner.`,
+      );
       return;
     }
     setSubmitting(true);
@@ -94,8 +101,6 @@ export default function ApplyLeavePage() {
     setReason("");
     setResult(null);
     setSubmitError("");
-
-    loadData();
   }
   if (result)
     return (
@@ -169,17 +174,8 @@ export default function ApplyLeavePage() {
         <div className="mt-5 grid grid-cols-3 gap-2.5">
           {leaveTypes.map((t) => {
             const bal = balances.find((b) => b.leave_type_id === t.id);
-            const isCompOff = isCompOffLeaveType(t.name);
-            const left = bal
-              ? bal.remaining_days
-              : isCompOff
-                ? 0
-                : t.max_days_per_year;
-            const total = bal
-              ? bal.allocated_days
-              : isCompOff
-                ? 0
-                : t.max_days_per_year;
+            const left = bal ? bal.remaining_days : 0;
+            const total = bal ? bal.allocated_days : 0;
             const pct =
               total > 0 ? Math.max(0, Math.min(100, (left / total) * 100)) : 0;
             const active = t.id === leaveTypeId;
@@ -200,8 +196,16 @@ export default function ApplyLeavePage() {
                   />
                 </div>
                 <p className="mt-1.5 text-[13px] text-[#1E2761]">
-                  <span className="font-semibold">{left}</span>
-                  <span className="text-[#8A91B4]"> / {total} left</span>
+                  {bal ? (
+                    <>
+                      <span className="font-semibold">{left}</span>
+                      <span className="text-[#8A91B4]"> / {total} left</span>
+                    </>
+                  ) : (
+                    <span className="text-[#B45309]">
+                      Not allocated for {balanceYear}
+                    </span>
+                  )}
                 </p>
               </button>
             );

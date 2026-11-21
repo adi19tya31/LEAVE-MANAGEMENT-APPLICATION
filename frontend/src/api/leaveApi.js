@@ -2,8 +2,8 @@ import { apiFetch } from "./client";
 
 export const getLeaveTypes = (token) => apiFetch("/api/leave-types", { token });
 
-export const getMyBalances = (token) =>
-  apiFetch("/api/leave-balances/me", { token });
+export const getMyBalances = (token, year) =>
+  apiFetch(`/api/leave-balances/me?year=${encodeURIComponent(year)}`, { token });
 
 export const submitLeaveApplication = (token, body) =>
   apiFetch("/api/leave-applications", { method: "POST", token, body });

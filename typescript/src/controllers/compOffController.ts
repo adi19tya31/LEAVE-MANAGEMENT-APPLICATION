@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import {compOffModel,employeeModel} from '../models'
+import {compOffModel} from '../models'
 import pool from '../config/db'
 import { sendNotification } from '../services'
 import * as compoffServices from '../services'
@@ -33,38 +33,26 @@ export async function applyCompOff(
       return
     }
 
-    const employee = await employeeModel.findById(req.user!.id)
-    if (!employee) {
-      res.status(404).json({ error: 'Employee not found.' })
-      return
-    }
-    if (!employee.reporting_to) {
+    const employeeId = req.user!.centralEmployeeId
+    const approverId = req.user!.reportingManagerEmployeeId
+    if (!approverId) {
       res.status(422).json({ error: 'No manager found for this employee.' })
       return
     }
 
     const created = await compOffModel.create({
-      employeeId: req.user!.id,
+      employeeId,
       workDate,
       reason: reason.trim(),
-      approverId: employee.reporting_to,
+      approverId,
     })
 
-    const recipientIds = new Set([
-      employee.reporting_to,
-      ...(await employeeModel.findOwnerIds()),
-    ])
-
-    await Promise.all(
-      [...recipientIds].map((recipientId) =>
-        sendNotification(
-          recipientId,
-          'New Comp-Off Request',
-          `${employee.name} has submitted a comp-off request for ${workDate}.`,
-          'COMPOFF_APPLIED',
-          created?.id
-        )
-      )
+    await sendNotification(
+      approverId,
+      'New Comp-Off Request',
+      `${req.user!.name} has submitted a comp-off request for ${workDate}.`,
+      'COMPOFF_APPLIED',
+      created?.id
     )
 
     res.status(201).json(created)
@@ -79,7 +67,7 @@ export async function myCompOffHistory(
   next: NextFunction
 ): Promise<void> {
   try {
-    res.json(await compOffModel.findByEmployee(req.user!.id))
+    res.json(await compOffModel.findByEmployee(req.user!.centralEmployeeId))
   } catch (err) {
     next(err)
   }
@@ -100,7 +88,7 @@ export async function cancelCompOffRequest(
 
     const request = await compoffServices.cancelCompOffRequest(
       compOffId,
-      req.user!.id
+      req.user!.centralEmployeeId
     )
 
     res.json({
@@ -118,7 +106,9 @@ export async function pendingCompOffs(
   next: NextFunction
 ): Promise<void> {
   try {
-    res.json(await compOffModel.findPendingForApprover(req.user!.id))
+    res.json(
+      await compOffModel.findPendingForApprover(req.user!.centralEmployeeId)
+    )
   } catch (err) {
     next(err)
   }
@@ -130,12 +120,16 @@ export async function compOffTeamHistory(
   next: NextFunction
 ): Promise<void> {
   try {
-    const role = req.user!.role
+    const role = req.user!.applicationRoles?.includes('owner')
+      ? 'owner'
+      : null
     if (role === 'owner') {
       res.json(await compOffModel.findAllHistory())
       return
     }
-    res.json(await compOffModel.findTeamHistory(req.user!.id))
+    res.json(
+      await compOffModel.findTeamHistory(req.user!.centralEmployeeId)
+    )
   } catch (err) {
     next(err)
   }
@@ -162,7 +156,7 @@ export async function decideCompOff(
       res.status(404).json({ error: 'Comp-Off request not found.' })
       return
     }
-    if (existing.approver_id !== req.user!.id) {
+    if (existing.approver_id !== req.user!.centralEmployeeId) {
       res
         .status(403)
         .json({ error: 'You are not the assigned approver for this request.' })
@@ -180,22 +174,21 @@ export async function decideCompOff(
       await connection.beginTransaction()
       await compOffModel.updateDecision(
         existing.id,
-        req.user!.id,
+        req.user!.centralEmployeeId,
         action,
         remarks?.trim() || null,
         connection
       )
       await connection.commit()
 
-      const approver = await employeeModel.findById(req.user!.id)
       const notificationTitle =
         action === 'approved'
           ? 'Comp-Off Request Approved'
           : 'Comp-Off Request Rejected'
       const notificationMessage =
         action === 'approved'
-          ? `Your comp-off request has been approved by ${approver?.name || 'your manager'}.`
-          : `Your comp-off request has been rejected by ${approver?.name || 'your manager'}.`
+          ? `Your comp-off request has been approved by ${req.user!.name || 'your manager'}.`
+          : `Your comp-off request has been rejected by ${req.user!.name || 'your manager'}.`
 
       await sendNotification(
         existing.employee_id,
@@ -235,7 +228,7 @@ export async function markCompOffAsWorked(
 
     const result = await compoffServices.markCompOffAsWorked(
       compOffId,
-      req.user!.id
+      req.user!.centralEmployeeId
     )
 
     res.json({
@@ -255,7 +248,9 @@ export async function myCompOffBalance(
   next: NextFunction
 ): Promise<void> {
   try {
-    const balance = await compoffServices.getMyCompOffBalance(req.user!.id)
+    const balance = await compoffServices.getMyCompOffBalance(
+      req.user!.centralEmployeeId
+    )
 
     res.json(balance)
   } catch (err) {

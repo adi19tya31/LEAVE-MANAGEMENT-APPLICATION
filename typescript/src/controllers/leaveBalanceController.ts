@@ -16,9 +16,9 @@ export async function myBalances(
   try {
     const year = Number(req.query.year) || currentYear()
     const [balances, leaveTypes, compOffBalance] = await Promise.all([
-      leaveBalanceModel.listForEmployee(req.user!.id, year),
+      leaveBalanceModel.listForEmployee(req.user!.centralEmployeeId, year),
       leaveTypeModel.findAll(),
-      getCompOffBalance(req.user!.id, year),
+      getCompOffBalance(req.user!.centralEmployeeId, year),
     ])
     const compOffType = leaveTypes.find((type) => isCompOffLeaveType(type.name))
 
@@ -30,7 +30,7 @@ export async function myBalances(
     res.json([
       ...balances.filter((balance) => balance.leave_type_id !== compOffType.id),
       {
-        employee_id: req.user!.id,
+        employee_id: req.user!.centralEmployeeId,
         leave_type_id: compOffType.id,
         year,
         allocated_days: compOffBalance.total_days,
@@ -58,3 +58,4 @@ export async function listLeaveTypes(
     next(err)
   }
 }
+

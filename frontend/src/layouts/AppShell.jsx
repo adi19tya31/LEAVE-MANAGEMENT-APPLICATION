@@ -1,6 +1,5 @@
 import {
   Bell,
-  Building2,
   LayoutDashboard,
   BadgeCheck,
   CalendarDays,
@@ -8,9 +7,6 @@ import {
   ChevronRight,
   LogOut,
   Send,
-  UserPlus,
-  Users,
-  LockKeyhole,
 } from "lucide-react";
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
@@ -34,46 +30,16 @@ export default function AppShell() {
 
   const notificationRef = useRef(null);
 
-  const managerOrOwner = user?.role === "manager" || user?.role === "owner";
+  // Get all application roles assigned by User Management
+const applicationRoles = (
+  user?.applicationRoles ||
+  (user?.role ? [user.role] : [])
+).map(role => role.toLowerCase());
 
-
-// if (loading) {
-//   return (
-//     <div
-//       style={{
-//         minHeight: "100vh",
-//         display: "flex",
-//         alignItems: "center",
-//         justifyContent: "center",
-//       }}
-//     >
-//       Loading...
-//     </div>
-//   );
-// }
-
-// if (!user) {
-//   return (
-//     <div
-//       style={{
-//         minHeight: "100vh",
-//         display: "flex",
-//         alignItems: "center",
-//         justifyContent: "center",
-//       }}
-//     >
-//       Unable to load user information.
-//     </div>
-//   );
-// }
-
-  // const navigate = useNavigate();
-
-  // const [unreadCount, setUnreadCount] = useState(0);
-
-  // const [notifications, setNotifications] = useState([]);
-
-  // const [showNotifications, setShowNotifications] = useState(false);
+// Check whether the user has manager or owner access
+const managerOrOwner = applicationRoles.some(
+  role => ["manager", "owner"].includes(role)
+);
 
   
   // ================================
@@ -305,20 +271,8 @@ if (!user) {
       icon: BadgeCheck,
     },
 
-    {
-      to: "/change-password",
-      label: "Change Password",
-      icon: LockKeyhole,
-    },
-
     ...(managerOrOwner
       ? [
-          {
-            to: "/employees",
-            label: "Employees",
-            icon: Users,
-          },
-
           {
             to: "/leave-calendar",
             label: "Leave Calendar",
@@ -335,18 +289,6 @@ if (!user) {
             to: "/comp-off-approvals",
             label: "Comp-Off Approvals",
             icon: BadgeCheck,
-          },
-
-          {
-            to: "/register",
-            label: "Register Employee",
-            icon: UserPlus,
-          },
-
-          {
-            to: "/departments",
-            label: "Departments",
-            icon: Building2,
           },
 
           {
@@ -376,7 +318,9 @@ if (!user) {
 
           <p className="mt-2 text-sm font-medium">{user.name}</p>
 
-          <p className="text-[12px] text-[#9AA6D9] capitalize">{user.role}</p>
+          <p className="text-[12px] text-[#9AA6D9] capitalize">
+            {applicationRoles.join(" , ")}
+          </p>
         </div>
 
         <nav className="flex-1 px-3 space-y-1">

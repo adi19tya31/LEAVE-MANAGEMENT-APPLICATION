@@ -1,5 +1,5 @@
 import pool from '../config/db'
-import { getCompOffBalance,  useCompOffBalance, refundCompOffBalance,  employeeModel,leaveBalanceModel,leaveApplicationModel,leaveApprovalLogModel,publicHolidayModel} from '../models'
+import { getCompOffBalance,  useCompOffBalance, refundCompOffBalance,  leaveBalanceModel,leaveApplicationModel,leaveApprovalLogModel,publicHolidayModel} from '../models'
 import { ApprovalAction, LeaveApplicationWithNames } from '../types'
 import { sendNotification } from './notificationServices'
 
@@ -34,6 +34,10 @@ interface ApplyForLeaveInput {
   endDayType: 'FULL_DAY' | 'FIRST_HALF' | 'SECOND_HALF'
 
   reason: string
+
+  reportingManagerEmployeeId: number | null
+
+  employeeName: string
 }
 
 interface ApplyForLeaveResult {
@@ -145,6 +149,8 @@ export async function applyForLeave(
     startDayType,
     endDayType,
     reason,
+    reportingManagerEmployeeId,
+    employeeName,
   } = input
 
   /*
@@ -216,7 +222,8 @@ export async function applyForLeave(
 
     if (!balance) {
       throw new LeaveServiceError(
-        'No leave balance record for this leave type / year.'
+        `No leave balance has been allocated for central employee ${employeeId}, leave type ${leaveTypeId}, year ${year}. Contact a Leave Management owner.`,
+        409
       )
     }
 
@@ -230,7 +237,7 @@ export async function applyForLeave(
     }
   }
   // 2. Resolve approver — this is the whole hierarchy rule, one lookup
-  const approverId = await employeeModel.getReportingTo(employeeId)
+  const approverId = reportingManagerEmployeeId
 
   if (!approverId) {
     throw new LeaveServiceError('No approver found for this employee.', 422)
@@ -257,45 +264,16 @@ export async function applyForLeave(
     approverId,
   })
 
-  //notify the owner or manager
-  await sendNotification(
-    approverId,
-    'New Leave Request',
-    `Employee ${employeeId} has submitted a leave request from ${startDate} to ${endDate}.`,
-    'leave_request',
-    application?.id
-  )
-
   if (!application) {
     throw new LeaveServiceError('Failed to create leave application.', 500)
   }
 
-  /*
-    GET EMPLOYEE DETAILS
-  */
-
-  const employee = await employeeModel.findById(employeeId)
-
-  /*
-    Notify the assigned approver and owners. An owner can be the approver,
-    so deduplicate recipients before creating notifications.
-  */
-
-  const recipientIds = new Set([
+  await sendNotification(
     approverId,
-    ...(await employeeModel.findOwnerIds()),
-  ])
-
-  await Promise.all(
-    [...recipientIds].map((recipientId) =>
-      sendNotification(
-        recipientId,
-        'New Leave Request',
-        `${employee?.name || 'An employee'} has applied for leave.`,
-        'LEAVE_APPLIED',
-        application.id
-      )
-    )
+    'New Leave Request',
+    `${employeeName || 'An employee'} has applied for leave.`,
+    'LEAVE_APPLIED',
+    application.id
   )
 
   /*
@@ -465,12 +443,6 @@ export async function decideApplication(
     transactionCommitted = true
 
     /*
-      GET APPROVER DETAILS
-    */
-
-    const approver = await employeeModel.findById(approverId)
-
-    /*
       NOTIFICATION TITLE
     */
 
@@ -485,12 +457,8 @@ export async function decideApplication(
 
     const notificationMessage =
       action === 'approved'
-        ? `Your leave request has been approved by ${
-            approver?.name || 'your manager'
-          }.`
-        : `Your leave request has been rejected by ${
-            approver?.name || 'your manager'
-          }.`
+        ? 'Your leave request has been approved by your manager.'
+        : 'Your leave request has been rejected by your manager.'
 
     /*
       SEND NOTIFICATION

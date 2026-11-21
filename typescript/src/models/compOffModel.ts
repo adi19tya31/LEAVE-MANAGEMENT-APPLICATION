@@ -46,10 +46,10 @@ async function findById(
   connection: Pool | PoolConnection = pool
 ): Promise<CompOffWithNames | null> {
   const [rows] = await connection.query<(CompOffWithNames & RowDataPacket)[]>(
-    `SELECT c.*, e.name AS employee_name, a.name AS approver_name
+    `SELECT c.*,
+            CONCAT('Employee #', c.employee_id) AS employee_name,
+            CONCAT('Employee #', c.approver_id) AS approver_name
      FROM comp_off_requests c
-     JOIN employees e ON e.Emp_id = c.employee_id
-     LEFT JOIN employees a ON a.Emp_id = c.approver_id
      WHERE c.id = ?`,
     [id]
   )
@@ -58,9 +58,9 @@ async function findById(
 
 async function findByEmployee(employeeId: number): Promise<CompOffWithNames[]> {
   const [rows] = await pool.query<(CompOffWithNames & RowDataPacket)[]>(
-    `SELECT c.*, e.name AS employee_name
+    `SELECT c.*,
+            CONCAT('Employee #', c.employee_id) AS employee_name
      FROM comp_off_requests c
-     JOIN employees e ON e.Emp_id = c.employee_id
      WHERE c.employee_id = ?
      ORDER BY c.applied_on DESC`,
     [employeeId]
@@ -72,9 +72,9 @@ async function findPendingForApprover(
   approverId: number
 ): Promise<CompOffWithNames[]> {
   const [rows] = await pool.query<(CompOffWithNames & RowDataPacket)[]>(
-    `SELECT c.*, e.name AS employee_name
+    `SELECT c.*,
+            CONCAT('Employee #', c.employee_id) AS employee_name
      FROM comp_off_requests c
-     JOIN employees e ON e.Emp_id = c.employee_id
      WHERE c.approver_id = ? AND c.status = 'pending'
      ORDER BY c.applied_on ASC`,
     [approverId]
@@ -86,10 +86,10 @@ async function findTeamHistory(
   approverId: number
 ): Promise<CompOffWithNames[]> {
   const [rows] = await pool.query<(CompOffWithNames & RowDataPacket)[]>(
-    `SELECT c.*, e.name AS employee_name
+    `SELECT c.*,
+            CONCAT('Employee #', c.employee_id) AS employee_name
      FROM comp_off_requests c
-     JOIN employees e ON e.Emp_id = c.employee_id
-     WHERE e.reporting_to = ?
+     WHERE c.approver_id = ?
      ORDER BY c.applied_on DESC`,
     [approverId]
   )
@@ -98,9 +98,9 @@ async function findTeamHistory(
 
 async function findAllHistory(): Promise<CompOffWithNames[]> {
   const [rows] = await pool.query<(CompOffWithNames & RowDataPacket)[]>(
-    `SELECT c.*, e.name AS employee_name
+    `SELECT c.*,
+            CONCAT('Employee #', c.employee_id) AS employee_name
      FROM comp_off_requests c
-     JOIN employees e ON e.Emp_id = c.employee_id
      ORDER BY c.applied_on DESC`
   )
   return rows

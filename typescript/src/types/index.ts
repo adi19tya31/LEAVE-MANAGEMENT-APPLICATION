@@ -1,32 +1,3 @@
-// One interface per table — field names match the DB columns exactly
-// so query results can be typed directly without extra mapping.
-
-export interface Role {
-  id: number
-  name: string
-}
-
-export interface Department {
-  id: number
-  name: string
-}
-
-export interface Employee {
-  Emp_id: number
-  name: string
-  company: string | null
-  employee_code: string | null
-  aadhar_no: string | null
-  pan_no: string | null
-  email: string
-  password_hash: string
-  role_id: number
-  Dept_id: number | null
-  reporting_to: number | null
-  status: 'active' | 'inactive'
-  created_at: string
-}
-
 export interface LeaveType {
   id: number
   name: string
@@ -103,10 +74,16 @@ export interface LeaveApprovalLog {
   action_date: string
 }
 
-// What we sign into the JWT, and what req.user holds after auth middleware runs
 export interface AuthPayload {
-  id: number
-  roleId: number
-  role: string | null
-  name: string
+  id: number;
+  centralEmployeeId: number;
+  keycloakId: string;
+
+  name: string;
+
+  role: string;
+  applicationRoles: string[];
+
+  applicationId: number | null;
+  reportingManagerEmployeeId: number | null;
 }

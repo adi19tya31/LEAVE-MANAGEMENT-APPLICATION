@@ -6,7 +6,7 @@ export async function getNotifications(
   res: Response
 ): Promise<void> {
   try {
-    const empId = req.user?.id
+    const empId = req.user?.centralEmployeeId
 
     if (!empId) {
       res.status(401).json({
@@ -37,7 +37,7 @@ export async function getUnreadCount(
   res: Response
 ): Promise<void> {
   try {
-    const empId = req.user?.id
+    const empId = req.user?.centralEmployeeId
 
     if (!empId) {
       res.status(401).json({
@@ -67,7 +67,7 @@ export async function getUnreadCount(
 
 export async function markAsRead(req: Request, res: Response): Promise<void> {
   try {
-    const empId = req.user?.id
+    const empId = req.user?.centralEmployeeId
     const notificationId = Number(req.params.id)
 
     if (!empId) {
@@ -104,7 +104,7 @@ export async function markAsRead(req: Request, res: Response): Promise<void> {
 
 export async function deleteOne(req: Request, res: Response): Promise<void> {
   try {
-    const empId = req.user?.id
+    const empId = req.user?.centralEmployeeId
     const notificationId = Number(req.params.id)
 
     if (!empId) {
@@ -144,7 +144,7 @@ export async function markAllAsRead(
   res: Response
 ): Promise<void> {
   try {
-    const empId = req.user?.id
+    const empId = req.user?.centralEmployeeId
 
     if (!empId) {
       res.status(401).json({
@@ -172,7 +172,7 @@ export async function markAllAsRead(
 
 export async function deleteAll(req: Request, res: Response): Promise<void> {
   try {
-    const empId = req.user?.id
+    const empId = req.user?.centralEmployeeId
 
     if (!empId) {
       res.status(401).json({
